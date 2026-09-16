@@ -1,0 +1,38 @@
+name: Telemetry runtime artifact
+
+on:
+  push:
+    branches:
+      - validation/telemetry-runtime
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      packages: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Build patch bundle
+        env:
+          GITHUB_ACTOR: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./gradlew :patches:buildAndroid
+
+      - name: Upload patch bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-runtime-mpp
+          path: patches/build/libs/*.mpp
+          if-no-files-found: error
