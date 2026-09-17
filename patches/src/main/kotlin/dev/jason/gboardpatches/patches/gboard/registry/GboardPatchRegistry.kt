@@ -70,6 +70,8 @@ import dev.jason.gboardpatches.patches.gboard.features.roundedkeyboard.gboardRou
 import dev.jason.gboardpatches.patches.gboard.features.settingshomepage.gboardSettingsHomepageBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.settingshomepage.gboardSettingsHomepageFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.signaturebypass.gboardSignatureBypassBytecodePatch
+import dev.jason.gboardpatches.patches.gboard.features.telemetry.gboardTelemetryBytecodePatch
+import dev.jason.gboardpatches.patches.gboard.features.telemetry.gboardTelemetryManifestPatch
 import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplitKeyboardFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplitKeyboardAccessPointPatch
 import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplitKeyboardModePatch
@@ -797,6 +799,23 @@ val gboardSignatureBypassPatch = gboardPublicResourcePatch(
     )
 }
 
+
+@Suppress("unused")
+val gboardBlockTelemetryPatch = gboardPublicResourcePatch(
+    featureId = "block_gboard_telemetry",
+    name = "Block Gboard Telemetry",
+    description = "封鎖獨立的 Gboard、ML Kit、Primes、Google Play Services 與 Tenor 遙測回報，同時保留功能性網路請求。\n" +
+        "Block dedicated Gboard, ML Kit, Primes, Google Play Services, and Tenor telemetry while preserving functional network requests.",
+    default = true,
+) {
+    compatibleWith(COMPATIBILITY_GBOARD)
+
+    dependsOn(
+        gboardTelemetryBytecodePatch,
+        gboardTelemetryManifestPatch,
+    )
+}
+
 object GboardPublishedPatchCatalog {
     val morpheRegistrations: Set<Patch<*>> = linkedSetOf(
         gboardZhuyinSlideInputPatch,
@@ -839,6 +858,7 @@ object GboardPublishedPatchCatalog {
         gboardZhuyinBottomRowWeightPatch,
         gboardPackageRenamePatch,
         gboardSignatureBypassPatch,
+        gboardBlockTelemetryPatch,
     ).filterTo(linkedSetOf()) { patch -> patch.name != null }
 
     @Suppress("DEPRECATION")

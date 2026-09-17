@@ -1,29 +1,31 @@
-<h1 align="center">Gboard Patches</h1>
+<h1 align="center">Gboard Privacy Patches</h1>
 
 <p align="center">
-  Morphe patches for Gboard with a mix of global improvements and Taiwan-focused enhancements.
+  A privacy-focused fork of <a href="https://github.com/jasonwu1994/Gboard-patches">jasonwu1994/Gboard-patches</a>, retaining the upstream feature set while adding privacy hardening on top.
 </p>
 
 <p align="center">
-  <a href="https://github.com/jasonwu1994/Gboard-patches/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/jasonwu1994/Gboard-patches?display_name=tag&label=Release&style=for-the-badge"></a>
-  <a href="https://github.com/jasonwu1994/Gboard-patches"><img alt="Total downloads" src="https://img.shields.io/github/downloads/jasonwu1994/Gboard-patches/total?label=Downloads&style=for-the-badge"></a>
-  <a href="https://morphe.software/add-source?github=jasonwu1994/Gboard-patches"><img alt="Add to Morphe" src="https://img.shields.io/badge/Morphe-Add%20Source-00A8FF?style=for-the-badge"></a>
-  <a href="https://github.com/jasonwu1994/Gboard-patches"><img alt="GitHub stars" src="https://img.shields.io/github/stars/jasonwu1994/Gboard-patches?style=social"></a>
+  <a href="https://github.com/jasonwu1994/Gboard-patches"><img alt="Upstream project" src="https://img.shields.io/badge/Upstream-jasonwu1994%2FGboard--patches-181717?style=for-the-badge"></a>
+  <a href="https://morphe.software/add-source?github=ioneng/Gboardwu-privacy"><img alt="Add this fork to Morphe" src="https://img.shields.io/badge/Morphe-Add%20Privacy%20Fork-00A8FF?style=for-the-badge"></a>
 </p>
 
 <p align="center">
-  <a href="https://ko-fi.com/jasonwu1994"><img height="40" alt="Buy me a coffee on Ko-fi" src="https://storage.ko-fi.com/cdn/kofi5.png?v=3"></a>
+  Upstream project and original feature work by <a href="https://github.com/jasonwu1994">jasonwu1994</a>.
 </p>
 
 ## Overview
 
-Gboard Patches is a public Morphe source for a curated set of Gboard enhancements, including both global usability improvements and Taiwan-focused features for local input habits and day-to-day use.
+This repository is a fork of the original [Gboard Patches](https://github.com/jasonwu1994/Gboard-patches) project. The existing feature set, patch architecture, and most non-privacy functionality are inherited from upstream.
+
+The main focus of this fork is to **add privacy-focused patches on top of the upstream project** while continuing to benefit from upstream features and updates. Privacy additions aim to reduce optional telemetry, diagnostics, crash/performance reporting, and tracking sidecars without disabling network activity that is required for explicitly requested Gboard features.
+
+Where practical, fork-specific privacy work is kept isolated from upstream feature implementations so future upstream changes can be merged with minimal conflict.
 
 ## Included Patches
 
-### Project-Built Features
+### Upstream Project-Built Features
 
-Features designed and built by this project rather than simply unlocking an existing Gboard flag.
+These features are inherited from the original Gboard Patches project. They were designed and built upstream rather than being privacy-specific additions of this fork.
 
 <details>
   <summary><code>Clipboard Enhancements</code></summary>
@@ -116,10 +118,44 @@ Customize the bottom tab order in Gboard's Emojis, stickers & GIFs panel with dr
   Exports all Gboard Patches settings to a portable JSON backup and restores only the modules you select, with per-module and per-key results. It also exports, compares, and restores Gboard's raw PB/XML flag-store files.
 </details>
 
+### Privacy Patches
 
-### Gboard Feature Unlocks
+Privacy-focused patches added by this fork reduce optional analytics and reporting while preserving functional Gboard features and the network requests those features need to operate.
 
-Features already present in Gboard that are exposed by enabling hidden settings, rollout gates, or built-in behavior.
+<details>
+  <summary><code>Block Gboard Telemetry</code></summary>
+
+  Suppresses dedicated telemetry, diagnostics, performance/crash reporting, and tracking sidecars identified in the supported Gboard 18.0.3 build, while deliberately leaving feature-required network activity intact.
+
+  **Implemented scope**
+
+  - central Clearcut event submission, covering Gboard logging and ML Kit / OCR `FIREBASE_ML_SDK` logging;
+  - Gboard's Clearcut logger creation gate as defence in depth;
+  - Google Play Services `ClientTelemetry`, `ClientThrottlingTelemetry`, and `ClientNotificationTelemetry` reporting;
+  - Daily Ping periodic metrics;
+  - Primes startup, native crash sidecar, and Lifeboat crash retransmission;
+  - Tenor `/v2/registershare` share tracking only;
+  - Cronet Android StatsLog telemetry via `android.net.http.EnableTelemetry=false`.
+
+  **Explicitly retained by design**
+
+  - UsageReporting / Usage & diagnostics consent plumbing;
+  - Audit API consent/compliance records;
+  - AppDoctor remote remediation;
+  - authentication and account operations;
+  - OCR execution itself;
+  - voice recognition and Agentic Dictation functional requests;
+  - model/module downloads and remote configuration;
+  - Tenor search, download, and result delivery;
+  - Voice Donation consent plumbing;
+  - other network traffic required for explicitly requested Gboard features.
+
+  See the [comprehensive telemetry investigation](docs/telemetry-investigation-gboard-18.0.3.md) and [implementation progress / validation handoff](docs/telemetry-patch-progress.md) for technical details and current validation status.
+</details>
+
+### Upstream Gboard Feature Unlocks
+
+These hidden-setting and rollout-gate unlocks are inherited from the upstream Gboard Patches project.
 
 <details>
   <summary><code>AI Writing Tools</code></summary>
@@ -253,9 +289,9 @@ Shows a dismiss button in the proactive suggestions bar.
   Renames the patched package so it can be installed alongside the official Gboard app.
 </details>
 
-### Taiwan-focused Features
+### Upstream Taiwan-focused Features
 
-Features tailored to Traditional Chinese and Zhuyin input workflows.
+These Traditional Chinese and Zhuyin workflow features are inherited from the upstream Gboard Patches project.
 
 <details>
   <summary><code>Zhuyin Slide Input</code></summary>
@@ -277,10 +313,12 @@ Features tailored to Traditional Chinese and Zhuyin input workflows.
 
 ## Install
 
-Add this repository as a Morphe source:
+Add this privacy-focused fork as a Morphe source:
 
-- [Open in Morphe](https://morphe.software/add-source?github=jasonwu1994/Gboard-patches)
-- Or manually add `https://github.com/jasonwu1994/Gboard-patches`
+- [Open this fork in Morphe](https://morphe.software/add-source?github=ioneng/Gboardwu-privacy)
+- Or manually add `https://github.com/ioneng/Gboardwu-privacy`
+
+Original upstream project: [jasonwu1994/Gboard-patches](https://github.com/jasonwu1994/Gboard-patches)
 
 ## Build
 
