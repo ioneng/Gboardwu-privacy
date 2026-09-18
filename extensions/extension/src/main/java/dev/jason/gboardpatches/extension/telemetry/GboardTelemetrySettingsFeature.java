@@ -18,6 +18,7 @@ public final class GboardTelemetrySettingsFeature
     private final String title;
     private final String summary;
     private final String headerBadge;
+    private final String restartTitle;
     private final String restartSummary;
     private final String allBlockedTitle;
     private final String allBlockedSummary;
@@ -60,6 +61,7 @@ public final class GboardTelemetrySettingsFeature
         title = text(context, R.string.gboard_patches_telemetry_title);
         summary = text(context, R.string.gboard_patches_telemetry_summary);
         headerBadge = text(context, R.string.gboard_patches_header_badge);
+        restartTitle = text(context, R.string.gboard_patches_telemetry_restart_title);
         restartSummary = text(context, R.string.gboard_patches_telemetry_restart_summary);
         allBlockedTitle = text(context, R.string.gboard_patches_telemetry_status_all_blocked_title);
         allBlockedSummary = text(context, R.string.gboard_patches_telemetry_status_all_blocked_summary);
@@ -146,7 +148,7 @@ public final class GboardTelemetrySettingsFeature
                     Arrays.asList(
                             status,
                             new GboardPatchesSettingsContract.StatusBlock(
-                                    "",
+                                    restartTitle,
                                     restartSummary,
                                     GboardPatchesSettingsContract.StatusTone.NEUTRAL)),
                     Arrays.asList(
