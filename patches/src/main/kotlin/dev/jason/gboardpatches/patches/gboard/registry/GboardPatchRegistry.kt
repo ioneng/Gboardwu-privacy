@@ -71,7 +71,7 @@ import dev.jason.gboardpatches.patches.gboard.features.settingshomepage.gboardSe
 import dev.jason.gboardpatches.patches.gboard.features.settingshomepage.gboardSettingsHomepageFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.signaturebypass.gboardSignatureBypassBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.telemetry.gboardTelemetryBytecodePatch
-import dev.jason.gboardpatches.patches.gboard.features.telemetry.gboardTelemetryManifestPatch
+import dev.jason.gboardpatches.patches.gboard.features.telemetry.gboardTelemetryFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplitKeyboardFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplitKeyboardAccessPointPatch
 import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplitKeyboardModePatch
@@ -811,8 +811,9 @@ val gboardBlockTelemetryPatch = gboardPublicResourcePatch(
     compatibleWith(COMPATIBILITY_GBOARD)
 
     dependsOn(
+        gboardPatchesSettingsPatch,
+        gboardTelemetryFeatureMarkerPatch,
         gboardTelemetryBytecodePatch,
-        gboardTelemetryManifestPatch,
     )
 }
 
