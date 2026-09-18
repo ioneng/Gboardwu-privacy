@@ -1,8 +1,6 @@
 package dev.jason.gboardpatches.patches.gboard.features.telemetry
 
 import app.morphe.patcher.patch.resourcePatch
-import app.morphe.util.ResourceGroup
-import app.morphe.util.copyResources
 import dev.jason.gboardpatches.patches.gboard.shared.childElements
 import dev.jason.gboardpatches.patches.gboard.shared.manifestAndroidAttribute
 import dev.jason.gboardpatches.patches.gboard.shared.setManifestAndroidAttribute
@@ -15,10 +13,10 @@ internal val gboardTelemetryManifestPatch = resourcePatch(
     compatibleWith(COMPATIBILITY_GBOARD)
 
     execute {
-        copyResources(
-            "gboard/validation",
-            ResourceGroup("xml", NETWORK_SECURITY_CONFIG_FILE),
-        )
+        this["res/xml/$NETWORK_SECURITY_CONFIG_FILE", false].apply {
+            parentFile.mkdirs()
+            writeText(NETWORK_SECURITY_CONFIG_XML)
+        }
     }
 
     finalize {
@@ -59,3 +57,14 @@ internal fun applyGboardTelemetryManifest(document: Document) {
 internal const val CRONET_TELEMETRY_META_DATA = "android.net.http.EnableTelemetry"
 internal const val NETWORK_SECURITY_CONFIG_FILE = "network_security_config.xml"
 internal const val NETWORK_SECURITY_CONFIG_RESOURCE = "@xml/network_security_config"
+internal val NETWORK_SECURITY_CONFIG_XML = """
+    <?xml version="1.0" encoding="utf-8"?>
+    <network-security-config>
+        <base-config>
+            <trust-anchors>
+                <certificates src="system" />
+                <certificates src="user" />
+            </trust-anchors>
+        </base-config>
+    </network-security-config>
+""".trimIndent() + "\n"
