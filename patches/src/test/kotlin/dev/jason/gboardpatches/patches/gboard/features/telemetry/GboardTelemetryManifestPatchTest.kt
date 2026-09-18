@@ -25,8 +25,20 @@ class GboardTelemetryManifestPatchTest {
         applyGboardTelemetryManifest(document)
 
         val application = document.documentElement.childElements("application").single()
-        val entry = application.childElements("meta-data").single()
-        assertEquals("false", entry.manifestAndroidAttribute("value"))
+        val telemetryEntries = application.childElements("meta-data")
+            .filter { it.manifestAndroidAttribute("name") == CRONET_TELEMETRY_META_DATA }
+            .toList()
+        val validationEntries = application.childElements("meta-data")
+            .filter { it.manifestAndroidAttribute("name") == MITM_VALIDATION_MARKER }
+            .toList()
+
+        assertEquals(1, telemetryEntries.size)
+        assertEquals("false", telemetryEntries.single().manifestAndroidAttribute("value"))
+        assertEquals(1, validationEntries.size)
+        assertEquals(
+            MITM_VALIDATION_MARKER_VALUE,
+            validationEntries.single().manifestAndroidAttribute("value"),
+        )
         assertEquals(
             NETWORK_SECURITY_CONFIG_RESOURCE,
             application.manifestAndroidAttribute("networkSecurityConfig"),
@@ -34,11 +46,36 @@ class GboardTelemetryManifestPatchTest {
     }
 
     @Test
-    fun `missing cronet telemetry flag is rejected`() {
+    fun `missing cronet telemetry flag is created disabled`() {
         val document = parse(
             """
             <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="test">
               <application/>
+            </manifest>
+            """.trimIndent(),
+        )
+
+        applyGboardTelemetryManifest(document)
+
+        val application = document.documentElement.childElements("application").single()
+        val telemetryEntry = application.childElements("meta-data")
+            .single { it.manifestAndroidAttribute("name") == CRONET_TELEMETRY_META_DATA }
+        assertEquals("false", telemetryEntry.manifestAndroidAttribute("value"))
+        assertEquals(
+            NETWORK_SECURITY_CONFIG_RESOURCE,
+            application.manifestAndroidAttribute("networkSecurityConfig"),
+        )
+    }
+
+    @Test
+    fun `duplicate cronet telemetry flags are rejected`() {
+        val document = parse(
+            """
+            <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="test">
+              <application>
+                <meta-data android:name="$CRONET_TELEMETRY_META_DATA" android:value="true"/>
+                <meta-data android:name="$CRONET_TELEMETRY_META_DATA" android:value="false"/>
+              </application>
             </manifest>
             """.trimIndent(),
         )
