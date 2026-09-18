@@ -1,6 +1,5 @@
 package dev.jason.gboardpatches.patches.gboard.features.telemetry
 
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.BytecodePatchContext
@@ -9,9 +8,11 @@ import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import dev.jason.gboardpatches.patches.gboard.shared.VerifiedTransformationPlan
 import dev.jason.gboardpatches.patches.gboard.shared.VerifiedTransformationState
 import dev.jason.gboardpatches.patches.gboard.shared.applyVerified
+import dev.jason.gboardpatches.patches.gboard.shared.gboardPatchesExtensionCarrierPatch
 import dev.jason.gboardpatches.patches.gboard.shared.isFieldReference
 import dev.jason.gboardpatches.patches.gboard.shared.isInvoke
 import dev.jason.gboardpatches.patches.gboard.shared.isLiteralWrite
@@ -20,85 +21,189 @@ import dev.jason.gboardpatches.patches.gboard.shared.isOpcode
 import dev.jason.gboardpatches.patches.gboard.shared.isReference
 import dev.jason.gboardpatches.patches.gboard.shared.isRegisterOperation
 import dev.jason.gboardpatches.patches.gboard.shared.mutableClass
+import dev.jason.gboardpatches.patches.gboard.shared.runtimeabi.RuntimeAbiCatalog
+import dev.jason.gboardpatches.patches.gboard.shared.runtimeabi.RuntimeCallEmitter
+import dev.jason.gboardpatches.patches.gboard.shared.runtimeabi.RuntimeCallId
 import dev.jason.gboardpatches.patches.shared.Constants.COMPATIBILITY_GBOARD
 
 /**
  * Blocks dedicated telemetry/reporting sidecars in the exact Gboard 18.0.3 target while
  * preserving the functional API/network calls that those sidecars observe.
  *
+ * Every supported telemetry family is guarded by a runtime preference. Preferences default to
+ * blocking, so a missing or unreadable settings state fails closed. Turning a group off restores
+ * the corresponding stock code path after Gboard restarts.
+ *
  * Intentionally retained: UsageReporting consent plumbing, audit consent records, AppDoctor, auth,
  * OCR execution, voice/Agentic Dictation requests, model/module downloads, remote config,
- * Tenor search/download, and other feature-required network traffic.
- */
-internal val gboardTelemetryBytecodePatch = bytecodePatch(
-    description = "封鎖 Gboard、ML Kit、Primes、Google Play Services 與 Tenor 的獨立遙測回報。",
-) {
-    compatibleWith(COMPATIBILITY_GBOARD)
+ * Ten
+    dependsOn(gboardPatchesExtensionCarrierPatch)
 
     execute {
-        patchCompletedTaskNoOp(CLEARCUT_SUBMIT_TARGET, ::validateClearcutSubmitStockBody)
-        patchForcedTrueReturn(CLEARCUT_LOGGER_GATE_TARGET, ::validateClearcutLoggerGateStockBody)
-        patchCompletedTaskNoOp(CLIENT_TELEMETRY_TARGET, ::validateClientTelemetryStockBody)
-        patchReturnVoidNoOp(CLIENT_THROTTLING_TARGET, ::validateClientThrottlingStockBody)
-        patchReturnVoidNoOp(CLIENT_NOTIFICATION_TARGET, ::validateClientNotificationStockBody)
+        patchConditionalCompletedTaskNoOp(
+            CLEARCUT_SUBMIT_TARGET,
+            ::validateClearcutSubmitStockBody,
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_CLEARCUT,
+        )
+        patchConditionalForcedBooleanReturn(
+            CLEARCUT_LOGGER_GATE_TARGET,
+            ::validateClearcutLoggerGateStockBody,
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_CLEARCUT,
+            policyRegisters = "",
+            forcedValue = 1,
+        )
+        patchConditionalCompletedTaskNoOp(
+            CLIENT_TELEMETRY_TARGET,
+            ::validateClientTelemetryStockBody,
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_GOOGLE_PLAY_SERVICES,
+        )
+        patchConditionalReturnVoidNoOp(
+            CLIENT_THROTTLING_TARGET,
+            ::validateClientThrottlingStockBody,
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_GOOGLE_PLAY_SERVICES,
+        )
+        patchConditionalReturnVoidNoOp(
+            CLIENT_NOTIFICATION_TARGET,
+            ::validateClientNotificationStockBody,
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_GOOGLE_PLAY_SERVICES,
+        )
         patchDailyPing()
-        patchReturnVoidNoOp(PRIMES_STARTUP_TARGET, ::validatePrimesStartupStockBody)
+        patchConditionalReturnVoidNoOp(
+            PRIMES_STARTUP_TARGET,
+            ::validatePrimesStartupStockBody,
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_PRIMES,
+            policyRegisters = "p1",
+        )
+        patchConditionalReturnVoidNoOp(
+            PRIMES_NATIVE_CRASH_TARGET,
+            ::validatePrimesNativeCrashStockBody,
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_PRIMES,
+            policyRegisters = "p0",
+        )
+        patchConditionalReturnVoidNoOp(
+            PRIMES_LIFEBOAT_TARGET,
+            ::validatePrimesLifeboatStockBody,
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_PRIMES,
+            policyRegisters = "p1",
+        )
+        patchTenorRegisterShare()
+        patchConditionalForcedBooleanReturn(
+            CRONET_TELEMETRY_TARGET,
+            ::validateCronetTelemetryStockBody,
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_CRONET,
+            policyRegisters = "p0",
+            forcedValue = 0,
+        )
+    }
+}:validatePrimesStartupStockBody)
         patchReturnVoidNoOp(PRIMES_NATIVE_CRASH_TARGET, ::validatePrimesNativeCrashStockBody)
         patchReturnVoidNoOp(PRIMES_LIFEBOAT_TARGET, ::validatePrimesLifeboatStockBody)
         patchTenorRegisterShare()
     }
 }
 
-context(context: BytecodePatchContext)
-private fun patchCompletedTaskNoOp(
-    target: MethodTarget,
-    validateStockBody: (List<Instruction>) -> Unit,
-) = with(context) {
-    exactMethod(target).applyVerified(
-        VerifiedTransformationPlan(
-            targetName = target.descriptor,
-            classify = { method -> method.classifyCompletedTaskNoOp(target, validateStockBody) },
-            mutate = { method ->
-                method.addInstructions(0, COMPLETED_SUCCESS_TASK_PREFIX.trimIndent())
-                method
-            },
-        ),
-    )
-}
 
 context(context: BytecodePatchContext)
-private fun patchReturnVoidNoOp(
+private fun patchConditionalCompletedTaskNoOp(
     target: MethodTarget,
     validateStockBody: (List<Instruction>) -> Unit,
+    policyCall: RuntimeCallId,
 ) = with(context) {
     exactMethod(target).applyVerified(
         VerifiedTransformationPlan(
             targetName = target.descriptor,
-            classify = { method -> method.classifyReturnVoidNoOp(target, validateStockBody) },
-            mutate = { method ->
-                method.addInstructions(0, "return-void")
-                method
+            classify = { method ->
+                method.classifyConditionalCompletedTaskNoOp(
+                    target,
+                    validateStockBody,
+                    policyCall,
+                )
             },
-        ),
-    )
-}
-
-context(context: BytecodePatchContext)
-private fun patchForcedTrueReturn(
-    target: MethodTarget,
-    validateStockBody: (List<Instruction>) -> Unit,
-) = with(context) {
-    exactMethod(target).applyVerified(
-        VerifiedTransformationPlan(
-            targetName = target.descriptor,
-            classify = { method -> method.classifyForcedTrueReturn(target, validateStockBody) },
             mutate = { method ->
-                method.addInstructions(
+                val stockStart = method.getInstruction(0)
+                method.addInstructionsWithLabels(
                     0,
                     """
-                        const/4 v0, 0x1
+                        ${RuntimeCallEmitter.invoke(policyCall, "")}
+                        move-result v0
+                        if-eqz v0, :telemetry_stock
+                        $COMPLETED_SUCCESS_TASK_PREFIX
+                    """.trimIndent(),
+                    ExternalLabel("telemetry_stock", stockStart),
+                )
+                method
+            },
+        ),
+    )
+}
+
+context(context: BytecodePatchContext)
+private fun patchConditionalReturnVoidNoOp(
+    target: MethodTarget,
+    validateStockBody: (List<Instruction>) -> Unit,
+    policyCall: RuntimeCallId,
+    policyRegisters: String = "",
+) = with(context) {
+    exactMethod(target).applyVerified(
+        VerifiedTransformationPlan(
+            targetName = target.descriptor,
+            classify = { method ->
+                method.classifyConditionalReturnVoidNoOp(
+                    target,
+                    validateStockBody,
+                    policyCall,
+                )
+            },
+            mutate = { method ->
+                val stockStart = method.getInstruction(0)
+                method.addInstructionsWithLabels(
+                    0,
+                    """
+                        ${RuntimeCallEmitter.invoke(policyCall, policyRegisters)}
+                        move-result v0
+                        if-eqz v0, :telemetry_stock
+                        return-void
+                    """.trimIndent(),
+                    ExternalLabel("telemetry_stock", stockStart),
+                )
+                method
+            },
+        ),
+    )
+}
+
+context(context: BytecodePatchContext)
+private fun patchConditionalForcedBooleanReturn(
+    target: MethodTarget,
+    validateStockBody: (List<Instruction>) -> Unit,
+    policyCall: RuntimeCallId,
+    policyRegisters: String,
+    forcedValue: Int,
+) = with(context) {
+    require(forcedValue == 0 || forcedValue == 1)
+    exactMethod(target).applyVerified(
+        VerifiedTransformationPlan(
+            targetName = target.descriptor,
+            classify = { method ->
+                method.classifyConditionalForcedBooleanReturn(
+                    target,
+                    validateStockBody,
+                    policyCall,
+                    forcedValue,
+                )
+            },
+            mutate = { method ->
+                val stockStart = method.getInstruction(0)
+                method.addInstructionsWithLabels(
+                    0,
+                    """
+                        ${RuntimeCallEmitter.invoke(policyCall, policyRegisters)}
+                        move-result v0
+                        if-eqz v0, :telemetry_stock
+                        const/4 v0, 0x$forcedValue
                         return v0
                     """.trimIndent(),
+                    ExternalLabel("telemetry_stock", stockStart),
                 )
                 method
             },
@@ -111,9 +216,26 @@ private fun patchDailyPing() = with(context) {
     exactMethod(DAILY_PING_TARGET).applyVerified(
         VerifiedTransformationPlan(
             targetName = DAILY_PING_TARGET.descriptor,
-            classify = MutableMethod::classifyDailyPing,
+            classify = { method ->
+                method.classifyConditionalDailyPing(
+                    RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_DAILY_PING,
+                )
+            },
             mutate = { method ->
-                method.addInstructions(0, DAILY_PING_SUCCESS_PREFIX.trimIndent())
+                val stockStart = method.getInstruction(0)
+                method.addInstructionsWithLabels(
+                    0,
+                    """
+                        ${RuntimeCallEmitter.invoke(
+                            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_DAILY_PING,
+                            "p0",
+                        )}
+                        move-result v0
+                        if-eqz v0, :telemetry_stock
+                        $DAILY_PING_SUCCESS_PREFIX
+                    """.trimIndent(),
+                    ExternalLabel("telemetry_stock", stockStart),
+                )
                 method
             },
         ),
@@ -125,7 +247,11 @@ private fun patchTenorRegisterShare() = with(context) {
     exactMethod(TENOR_REGISTER_SHARE_TARGET).applyVerified(
         VerifiedTransformationPlan(
             targetName = TENOR_REGISTER_SHARE_TARGET.descriptor,
-            classify = MutableMethod::classifyTenorRegisterShare,
+            classify = { method ->
+                method.classifyConditionalTenorRegisterShare(
+                    RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_TENOR,
+                )
+            },
             mutate = { method ->
                 val instructions = method.instructions()
                 val shareStart = instructions.indexOfUniqueField(TENOR_SHARE_MODE_FIELD)
@@ -136,9 +262,30 @@ private fun patchTenorRegisterShare() = with(context) {
                 check(continuation > shareStart) {
                     "Tenor continuation must follow register-share block"
                 }
+                val setupIndex = shareStart - 1
+                val setup = instructions.getOrNull(setupIndex)
+                    ?: error("Missing Tenor register-share setup")
+                val scratchRegister = (setup as? OneRegisterInstruction)?.registerA
+                    ?: error("Tenor register-share setup must expose one scratch register")
+                check(setup.isOpcode("CONST_16") && setup.isLiteralWrite(scratchRegister, 0)) {
+                    "Unexpected Tenor register-share setup before $TENOR_SHARE_MODE_FIELD"
+                }
+
                 method.addInstructionsWithLabels(
-                    shareStart,
-                    "goto/32 :tenor_after_register_share",
+                    setupIndex,
+                    """
+                        ${RuntimeCallEmitter.invoke(
+                            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_TENOR,
+                            "",
+                        )}
+                        move-result v$scratchRegister
+                        if-eqz v$scratchRegister, :tenor_register_share
+                        goto/32 :tenor_after_register_share
+                    """.trimIndent(),
+                    ExternalLabel(
+                        "tenor_register_share",
+                        method.getInstruction(setupIndex),
+                    ),
                     ExternalLabel(
                         "tenor_after_register_share",
                         method.getInstruction(continuation),
@@ -149,7 +296,6 @@ private fun patchTenorRegisterShare() = with(context) {
         ),
     )
 }
-
 context(context: BytecodePatchContext)
 private fun exactMethod(target: MethodTarget): MutableMethod = with(context) {
     val matches = mutableClass(target.classDescriptor).methods.filter { method ->
@@ -161,18 +307,22 @@ private fun exactMethod(target: MethodTarget): MutableMethod = with(context) {
     matches.single()
 }
 
-private fun MutableMethod.classifyCompletedTaskNoOp(
+
+private fun MutableMethod.classifyConditionalCompletedTaskNoOp(
     target: MethodTarget,
     validateStockBody: (List<Instruction>) -> Unit,
+    policyCall: RuntimeCallId,
 ): VerifiedTransformationState {
     validateTargetMetadata(target)
     val instructions = instructions()
+    val policyReference = RuntimeAbiCatalog.abi(policyCall).reference
     return when {
-        instructions.hasCompletedSuccessTaskPrefix() -> {
-            validateStockBody(instructions.drop(COMPLETED_SUCCESS_TASK_PREFIX_INSTRUCTION_COUNT))
+        instructions.hasConditionalCompletedSuccessTaskPrefix(policyReference) -> {
+            validateStockBody(instructions.drop(CONDITIONAL_COMPLETED_SUCCESS_PREFIX_COUNT))
             VerifiedTransformationState.PATCHED
         }
-        instructions.any { it.isMethodReference(COMPLETED_SUCCESS_TASK_METHOD) } ->
+        instructions.hasCompletedSuccessTaskPrefix() -> VerifiedTransformationState.MALFORMED
+        instructions.any { it.isMethodReference(policyReference) } ->
             VerifiedTransformationState.MALFORMED
         else -> {
             validateStockBody(instructions)
@@ -181,67 +331,118 @@ private fun MutableMethod.classifyCompletedTaskNoOp(
     }
 }
 
-private fun MutableMethod.classifyReturnVoidNoOp(
+private fun MutableMethod.classifyConditionalReturnVoidNoOp(
     target: MethodTarget,
     validateStockBody: (List<Instruction>) -> Unit,
+    policyCall: RuntimeCallId,
 ): VerifiedTransformationState {
     validateTargetMetadata(target)
     val instructions = instructions()
-    return if (instructions.firstOrNull()?.isOpcode("RETURN_VOID") == true) {
-        validateStockBody(instructions.drop(1))
-        VerifiedTransformationState.PATCHED
-    } else {
-        validateStockBody(instructions)
-        VerifiedTransformationState.STOCK
+    val policyReference = RuntimeAbiCatalog.abi(policyCall).reference
+    return when {
+        instructions.hasConditionalReturnVoidPrefix(policyReference) -> {
+            validateStockBody(instructions.drop(CONDITIONAL_RETURN_VOID_PREFIX_COUNT))
+            VerifiedTransformationState.PATCHED
+        }
+        instructions.firstOrNull()?.isOpcode("RETURN_VOID") == true ->
+            VerifiedTransformationState.MALFORMED
+        instructions.any { it.isMethodReference(policyReference) } ->
+            VerifiedTransformationState.MALFORMED
+        else -> {
+            validateStockBody(instructions)
+            VerifiedTransformationState.STOCK
+        }
     }
 }
 
-private fun MutableMethod.classifyForcedTrueReturn(
+private fun MutableMethod.classifyConditionalForcedBooleanReturn(
     target: MethodTarget,
     validateStockBody: (List<Instruction>) -> Unit,
+    policyCall: RuntimeCallId,
+    forcedValue: Int,
 ): VerifiedTransformationState {
     validateTargetMetadata(target)
     val instructions = instructions()
-    val patchedPrefix = instructions.size >= 2 &&
-        instructions[0].isOpcode("CONST_4") &&
-        instructions[0].isLiteralWrite(0, 1) &&
-        instructions[1].isRegisterOperation("RETURN", 0)
-    return if (patchedPrefix) {
-        validateStockBody(instructions.drop(2))
-        VerifiedTransformationState.PATCHED
-    } else {
-        validateStockBody(instructions)
-        VerifiedTransformationState.STOCK
+    val policyReference = RuntimeAbiCatalog.abi(policyCall).reference
+    return when {
+        instructions.hasConditionalForcedBooleanPrefix(policyReference, forcedValue) -> {
+            validateStockBody(instructions.drop(CONDITIONAL_FORCED_BOOLEAN_PREFIX_COUNT))
+            VerifiedTransformationState.PATCHED
+        }
+        instructions.hasLegacyForcedBooleanPrefix(forcedValue) ->
+            VerifiedTransformationState.MALFORMED
+        instructions.any { it.isMethodReference(policyReference) } ->
+            VerifiedTransformationState.MALFORMED
+        else -> {
+            validateStockBody(instructions)
+            VerifiedTransformationState.STOCK
+        }
     }
 }
 
-private fun MutableMethod.classifyDailyPing(): VerifiedTransformationState {
+private fun MutableMethod.classifyConditionalDailyPing(
+    policyCall: RuntimeCallId,
+): VerifiedTransformationState {
     validateTargetMetadata(DAILY_PING_TARGET)
     val instructions = instructions()
-    return if (instructions.hasDailyPingSuccessPrefix()) {
-        validateDailyPingStockBody(instructions.drop(DAILY_PING_SUCCESS_PREFIX_INSTRUCTION_COUNT))
-        VerifiedTransformationState.PATCHED
-    } else {
-        validateDailyPingStockBody(instructions)
-        VerifiedTransformationState.STOCK
+    val policyReference = RuntimeAbiCatalog.abi(policyCall).reference
+    return when {
+        instructions.hasConditionalDailyPingPrefix(policyReference) -> {
+            validateDailyPingStockBody(instructions.drop(CONDITIONAL_DAILY_PING_PREFIX_COUNT))
+            VerifiedTransformationState.PATCHED
+        }
+        instructions.hasDailyPingSuccessPrefix() -> VerifiedTransformationState.MALFORMED
+        instructions.any { it.isMethodReference(policyReference) } ->
+            VerifiedTransformationState.MALFORMED
+        else -> {
+            validateDailyPingStockBody(instructions)
+            VerifiedTransformationState.STOCK
+        }
     }
 }
 
-private fun MutableMethod.classifyTenorRegisterShare(): VerifiedTransformationState {
+private fun MutableMethod.classifyConditionalTenorRegisterShare(
+    policyCall: RuntimeCallId,
+): VerifiedTransformationState {
     validateTargetMetadata(TENOR_REGISTER_SHARE_TARGET)
     val instructions = instructions()
     validateTenorSentinels(instructions)
+
     val shareStart = instructions.indexOfUniqueField(TENOR_SHARE_MODE_FIELD)
     val continuation = instructions.indexOfFirstAfter(shareStart, TENOR_CONTINUATION_FIELD)
     check(continuation > shareStart)
+
     val preceding = instructions.getOrNull(shareStart - 1)
+    if (preceding?.isOpcode("GOTO_32") == true) {
+        return VerifiedTransformationState.MALFORMED
+    }
+
+    val setupIndex = shareStart - 1
+    val setup = instructions.getOrNull(setupIndex)
+        ?: return VerifiedTransformationState.MALFORMED
+    val scratchRegister = (setup as? OneRegisterInstruction)?.registerA
+        ?: return VerifiedTransformationState.MALFORMED
+    if (!setup.isOpcode("CONST_16") || !setup.isLiteralWrite(scratchRegister, 0)) {
+        return VerifiedTransformationState.MALFORMED
+    }
+
+    val policyReference = RuntimeAbiCatalog.abi(policyCall).reference
+    val conditionalStart = setupIndex - CONDITIONAL_TENOR_PREFIX_COUNT
+    val hasConditionalPrefix =
+        conditionalStart >= 0 &&
+            instructions.hasConditionalTenorPrefixAt(
+                conditionalStart,
+                scratchRegister,
+                policyReference,
+            )
+
     return when {
-        preceding?.isOpcode("GOTO_32") == true -> VerifiedTransformationState.PATCHED
-        preceding?.isOpcode("CONST_16") == true -> VerifiedTransformationState.STOCK
-        else -> VerifiedTransformationState.MALFORMED
+        hasConditionalPrefix -> VerifiedTransformationState.PATCHED
+        instructions.any { it.isMethodReference(policyReference) } ->
+            VerifiedTransformationState.MALFORMED
+        else -> VerifiedTransformationState.STOCK
     }
 }
-
 private fun MutableMethod.validateTargetMetadata(target: MethodTarget) {
     check(matches(target)) {
         "Refusing non-target telemetry method $definingClass->$name"
@@ -265,6 +466,61 @@ private fun MutableMethod.matches(target: MethodTarget): Boolean =
 private fun MutableMethod.instructions(): List<Instruction> =
     implementation?.instructions ?: error("No instructions in $definingClass->$name")
 
+
+private fun List<Instruction>.hasConditionalCompletedSuccessTaskPrefix(
+    policyReference: String,
+): Boolean =
+    size >= CONDITIONAL_COMPLETED_SUCCESS_PREFIX_COUNT &&
+        this[0].isOpcode("INVOKE_STATIC") &&
+        this[0].isMethodReference(policyReference) &&
+        this[1].isRegisterOperation("MOVE_RESULT", 0) &&
+        this[2].isRegisterOperation("IF_EQZ", 0) &&
+        drop(CONDITIONAL_POLICY_GUARD_COUNT).hasCompletedSuccessTaskPrefix()
+
+private fun List<Instruction>.hasConditionalReturnVoidPrefix(
+    policyReference: String,
+): Boolean =
+    size >= CONDITIONAL_RETURN_VOID_PREFIX_COUNT &&
+        this[0].isOpcode("INVOKE_STATIC") &&
+        this[0].isMethodReference(policyReference) &&
+        this[1].isRegisterOperation("MOVE_RESULT", 0) &&
+        this[2].isRegisterOperation("IF_EQZ", 0) &&
+        this[3].isOpcode("RETURN_VOID")
+
+private fun List<Instruction>.hasConditionalForcedBooleanPrefix(
+    policyReference: String,
+    forcedValue: Int,
+): Boolean =
+    size >= CONDITIONAL_FORCED_BOOLEAN_PREFIX_COUNT &&
+        this[0].isOpcode("INVOKE_STATIC") &&
+        this[0].isMethodReference(policyReference) &&
+        this[1].isRegisterOperation("MOVE_RESULT", 0) &&
+        this[2].isRegisterOperation("IF_EQZ", 0) &&
+        this[3].isOpcode("CONST_4") &&
+        this[3].isLiteralWrite(0, forcedValue.toLong()) &&
+        this[4].isRegisterOperation("RETURN", 0)
+
+private fun List<Instruction>.hasConditionalDailyPingPrefix(
+    policyReference: String,
+): Boolean =
+    size >= CONDITIONAL_DAILY_PING_PREFIX_COUNT &&
+        this[0].isOpcode("INVOKE_STATIC") &&
+        this[0].isMethodReference(policyReference) &&
+        this[1].isRegisterOperation("MOVE_RESULT", 0) &&
+        this[2].isRegisterOperation("IF_EQZ", 0) &&
+        drop(CONDITIONAL_POLICY_GUARD_COUNT).hasDailyPingSuccessPrefix()
+
+private fun List<Instruction>.hasConditionalTenorPrefixAt(
+    start: Int,
+    scratchRegister: Int,
+    policyReference: String,
+): Boolean =
+    getOrNull(start)?.isOpcode("INVOKE_STATIC") == true &&
+        getOrNull(start)?.isMethodReference(policyReference) == true &&
+        getOrNull(start + 1)?.isRegisterOperation("MOVE_RESULT", scratchRegister) == true &&
+        getOrNull(start + 2)?.isRegisterOperation("IF_EQZ", scratchRegister) == true &&
+        getOrNull(start + 3)?.isOpcode("GOTO_32") == true
+
 private fun List<Instruction>.hasCompletedSuccessTaskPrefix(): Boolean =
     size >= COMPLETED_SUCCESS_TASK_PREFIX_INSTRUCTION_COUNT &&
         this[0].isOpcode("CONST_4") &&
@@ -272,6 +528,12 @@ private fun List<Instruction>.hasCompletedSuccessTaskPrefix(): Boolean =
         this[1].isInvoke("INVOKE_STATIC", COMPLETED_SUCCESS_TASK_METHOD, 0) &&
         this[2].isRegisterOperation("MOVE_RESULT_OBJECT", 0) &&
         this[3].isRegisterOperation("RETURN_OBJECT", 0)
+
+private fun List<Instruction>.hasLegacyForcedBooleanPrefix(forcedValue: Int): Boolean =
+    size >= 2 &&
+        this[0].isOpcode("CONST_4") &&
+        this[0].isLiteralWrite(0, forcedValue.toLong()) &&
+        this[1].isRegisterOperation("RETURN", 0)
 
 private fun List<Instruction>.hasDailyPingSuccessPrefix(): Boolean =
     size >= DAILY_PING_SUCCESS_PREFIX_INSTRUCTION_COUNT &&
@@ -284,7 +546,6 @@ private fun List<Instruction>.hasDailyPingSuccessPrefix(): Boolean =
         this[2].isReference("Lwyy;") &&
         this[3].isInvoke("INVOKE_DIRECT", "Lwyy;-><init>(Ljava/lang/Object;)V", 1, 0) &&
         this[4].isRegisterOperation("RETURN_OBJECT", 1)
-
 private fun validateClearcutSubmitStockBody(instructions: List<Instruction>) {
     requireReference(instructions, "AbstractLogEventBuilder")
     requireReference(
