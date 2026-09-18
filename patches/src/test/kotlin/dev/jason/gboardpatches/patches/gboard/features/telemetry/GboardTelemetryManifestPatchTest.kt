@@ -24,9 +24,13 @@ class GboardTelemetryManifestPatchTest {
         applyGboardTelemetryManifest(document)
         applyGboardTelemetryManifest(document)
 
-        val entry = document.documentElement.childElements("application").single()
-            .childElements("meta-data").single()
+        val application = document.documentElement.childElements("application").single()
+        val entry = application.childElements("meta-data").single()
         assertEquals("false", entry.manifestAndroidAttribute("value"))
+        assertEquals(
+            NETWORK_SECURITY_CONFIG_RESOURCE,
+            application.manifestAndroidAttribute("networkSecurityConfig"),
+        )
     }
 
     @Test
@@ -35,6 +39,23 @@ class GboardTelemetryManifestPatchTest {
             """
             <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="test">
               <application/>
+            </manifest>
+            """.trimIndent(),
+        )
+
+        assertThrows(IllegalStateException::class.java) {
+            applyGboardTelemetryManifest(document)
+        }
+    }
+
+    @Test
+    fun `existing different network security config is rejected`() {
+        val document = parse(
+            """
+            <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="test">
+              <application android:networkSecurityConfig="@xml/existing_config">
+                <meta-data android:name="$CRONET_TELEMETRY_META_DATA" android:value="true"/>
+              </application>
             </manifest>
             """.trimIndent(),
         )
