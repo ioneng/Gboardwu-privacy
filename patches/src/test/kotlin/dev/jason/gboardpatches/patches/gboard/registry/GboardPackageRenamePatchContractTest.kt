@@ -2,7 +2,6 @@ package dev.jason.gboardpatches.patches.gboard.registry
 
 import com.google.gson.JsonParser
 import dev.jason.gboardpatches.patches.gboard.features.packagerename.gboardPackageRenameResourcePatch
-import dev.jason.gboardpatches.patches.gboard.validation.gboardMitmValidationResourcePatch
 import dev.jason.gboardpatches.patches.shared.Constants.COMPATIBILITY_GBOARD
 import dev.jason.gboardpatches.patches.shared.Constants.GBOARD_PACKAGE_NAME
 import dev.jason.gboardpatches.patches.shared.Constants.GBOARD_PATCHED_PACKAGE_NAME
@@ -33,9 +32,8 @@ class GboardPackageRenamePatchContractTest {
         assertTrue(option.required)
         assertEquals("kotlin.String", option.type.toString())
         assertEquals(APP_DISPLAY_NAME_PRESETS, option.values)
-        assertEquals(2, patch.dependencies.size)
-        assertTrue(gboardPackageRenameResourcePatch in patch.dependencies)
-        assertTrue(gboardMitmValidationResourcePatch in patch.dependencies)
+        assertEquals(1, patch.dependencies.size)
+        assertSame(gboardPackageRenameResourcePatch, patch.dependencies.single())
         assertEquals("com.google.android.inputmethod.latin", GBOARD_PACKAGE_NAME)
         assertEquals("dev.jason.com.google.android.inputmethod.latin", GBOARD_PATCHED_PACKAGE_NAME)
 
