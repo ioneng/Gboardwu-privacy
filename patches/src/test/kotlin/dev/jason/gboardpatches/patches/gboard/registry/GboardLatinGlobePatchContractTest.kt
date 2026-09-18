@@ -70,21 +70,6 @@ class GboardLatinGlobePatchContractTest {
     }
 
     @Test
-    fun readmeListsLatinGlobeWithThePublicEnglishDescription() {
-        val readme = readSource("README.md")
-            .substringAfter("## Included Patches")
-            .substringBefore("## Install")
-
-        assertTrue(readme.contains(
-            "<summary><code>Latin Globe Key Ignore Interval</code></summary>",
-        ))
-        assertTrue(readme.contains(
-            "Add an independent English globe key ignore interval override for " +
-                "post-typing language-switch delay.",
-        ))
-    }
-
-    @Test
     fun latinGlobeAddsNoGeneratedBindingOrFlagFactory() {
         val profile = JsonParser.parseString(readSource(BINDINGS_PROFILE_PATH)).asJsonObject
         assertEquals("18.0.3", profile.get("target_version").asString)

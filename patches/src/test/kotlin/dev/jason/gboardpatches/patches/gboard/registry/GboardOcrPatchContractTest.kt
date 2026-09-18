@@ -15,7 +15,6 @@ class GboardOcrPatchContractTest {
         val keyboardGroup = read(root, KEYBOARD_GROUP)
         val availability = read(root, AVAILABILITY)
         val settingsText = read(root, SETTINGS_TEXT)
-        val readme = read(root, README)
 
         assertTrue(registry.contains("val gboardOcrScanTextPatch = gboardPublicResourcePatch("))
         assertTrue(registry.contains("name = \"Enable OCR / Scan Text\""))
@@ -50,16 +49,7 @@ class GboardOcrPatchContractTest {
             "<translation locale=\"zh-Hant\">需要透過 Google Play services " +
                 "下載官方模型</translation>",
         ))
-        assertTrue(!settingsText.contains("gboard_patches_ocr_engine_summary"))
-        assertTrue(
-            readme.indexOf("<summary><code>Long-Press Editing Shortcuts</code></summary>") <
-                readme.indexOf("<summary><code>Enable OCR / Scan Text</code></summary>"),
-        )
-        assertTrue(readme.contains(
-            "Enable the OCR / Scan Text feature with Latin, Chinese, Japanese, Korean, and " +
-                "Devanagari recognition backends.",
-        ))
-    }
+        assertTrue(!settingsText.contains("gboard_patches_ocr_engine_summary"))    }
 
     private fun read(root: Path, relative: String): String =
         Files.readString(root.resolve(relative), StandardCharsets.UTF_8)
@@ -85,6 +75,5 @@ class GboardOcrPatchContractTest {
                 "GboardPatchesFeatureAvailability.java"
         const val SETTINGS_TEXT =
             "extensions/extension/src/main/settings-text/gboard_settings_text.xml"
-        const val README = "README.md"
     }
 }

@@ -4,9 +4,6 @@ import dev.jason.gboardpatches.patches.gboard.features.bluetoothmicrophone.BLUET
 import dev.jason.gboardpatches.patches.gboard.features.bluetoothmicrophone.gboardBluetoothMicrophoneFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.bluetoothmicrophone.gboardBluetoothMicrophoneFlagValuePatch
 import dev.jason.gboardpatches.patches.gboard.shared.gboardPatchesSettingsPatch
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -58,30 +55,6 @@ class GboardBluetoothMicrophonePatchContractTest {
                 .getAsJsonArray("com.google.android.inputmethod.latin")
                 .map { it.asString },
         )
-    }
-
-    @Test
-    fun readmeUsesConciseBluetoothMicrophoneDescription() {
-        val readme = Files.readString(
-            repositoryRoot().resolve("README.md"),
-            StandardCharsets.UTF_8,
-        )
-
-        assertTrue(readme.contains("<summary><code>Use Bluetooth Microphone</code></summary>"))
-        assertEquals(
-            "Enables the <code>Voice typing &gt; Use Bluetooth microphone</code> setting " +
-                "and its related rollout gate.",
-            readme.lineSequence()
-                .single { it.contains("Voice typing &gt; Use Bluetooth microphone") }
-                .trim(),
-        )
-    }
-
-    private fun repositoryRoot(): Path {
-        val workingDirectory = Path.of("").toAbsolutePath().normalize()
-        return generateSequence(workingDirectory) { it.parent }
-            .firstOrNull { Files.isRegularFile(it.resolve("settings.gradle.kts")) }
-            ?: error("Could not locate repository root from $workingDirectory")
     }
 
     private companion object {

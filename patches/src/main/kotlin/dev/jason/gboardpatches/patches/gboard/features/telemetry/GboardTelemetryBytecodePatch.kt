@@ -125,7 +125,7 @@ private fun patchConditionalCompletedTaskNoOp(
                 method.addInstructionsWithLabels(
                     0,
                     """
-                        ${RuntimeCallEmitter.invoke(policyCall, "")}
+                        ${emitTelemetryPolicyCall(policyCall, "")}
                         move-result v0
                         if-eqz v0, :telemetry_stock
                         $COMPLETED_SUCCESS_TASK_PREFIX
@@ -160,7 +160,7 @@ private fun patchConditionalReturnVoidNoOp(
                 method.addInstructionsWithLabels(
                     0,
                     """
-                        ${RuntimeCallEmitter.invoke(policyCall, policyRegisters)}
+                        ${emitTelemetryPolicyCall(policyCall, policyRegisters)}
                         move-result v0
                         if-eqz v0, :telemetry_stock
                         return-void
@@ -198,7 +198,7 @@ private fun patchConditionalForcedBooleanReturn(
                 method.addInstructionsWithLabels(
                     0,
                     """
-                        ${RuntimeCallEmitter.invoke(policyCall, policyRegisters)}
+                        ${emitTelemetryPolicyCall(policyCall, policyRegisters)}
                         move-result v0
                         if-eqz v0, :telemetry_stock
                         const/4 v0, 0x$forcedValue
@@ -210,6 +210,33 @@ private fun patchConditionalForcedBooleanReturn(
             },
         ),
     )
+}
+
+private fun emitTelemetryPolicyCall(
+    policyCall: RuntimeCallId,
+    registers: String,
+): String = when (policyCall) {
+    RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_CLEARCUT ->
+        RuntimeCallEmitter.invoke(
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_CLEARCUT,
+            registers,
+        )
+    RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_GOOGLE_PLAY_SERVICES ->
+        RuntimeCallEmitter.invoke(
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_GOOGLE_PLAY_SERVICES,
+            registers,
+        )
+    RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_PRIMES ->
+        RuntimeCallEmitter.invoke(
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_PRIMES,
+            registers,
+        )
+    RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_CRONET ->
+        RuntimeCallEmitter.invoke(
+            RuntimeCallId.TELEMETRY_RUNTIME_SHOULD_BLOCK_CRONET,
+            registers,
+        )
+    else -> error("Unsupported generic telemetry policy call: $policyCall")
 }
 
 context(context: BytecodePatchContext)
