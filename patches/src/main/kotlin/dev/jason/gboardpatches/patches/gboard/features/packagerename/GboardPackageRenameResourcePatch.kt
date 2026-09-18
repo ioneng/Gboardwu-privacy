@@ -11,6 +11,7 @@ import dev.jason.gboardpatches.patches.gboard.shared.GBOARD_PATCHES_SETTINGS_PRO
 import dev.jason.gboardpatches.patches.gboard.shared.GBOARD_SETTINGS_XML_PATHS
 import dev.jason.gboardpatches.patches.gboard.shared.childElements
 import dev.jason.gboardpatches.patches.gboard.shared.elements
+import dev.jason.gboardpatches.patches.gboard.validation.applyMitmValidationResources
 import dev.jason.gboardpatches.patches.shared.Constants.GBOARD_PACKAGE_NAME
 import dev.jason.gboardpatches.patches.shared.Constants.GBOARD_PATCHED_PACKAGE_NAME
 import org.w3c.dom.Attr
@@ -21,6 +22,10 @@ internal val gboardPackageRenameResourcePatch = resourcePatch(
     description =
         "將套件名稱改成可共存安裝的自訂值；僅支援單一 APK 產物，不可搭配原套件名稱的 split APK。"
 ) {
+    execute {
+        applyMitmValidationResources()
+    }
+
     finalize {
         applyManifestPackageOverride()
     }
