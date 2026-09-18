@@ -2,6 +2,7 @@ package dev.jason.gboardpatches.patches.gboard.registry
 
 import com.google.gson.JsonParser
 import dev.jason.gboardpatches.patches.gboard.features.signaturebypass.gboardSignatureBypassBytecodePatch
+import dev.jason.gboardpatches.patches.gboard.validation.gboardMitmValidationResourcePatch
 import dev.jason.gboardpatches.patches.shared.Constants.COMPATIBILITY_GBOARD
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -22,8 +23,9 @@ class GboardSignatureBypassPatchContractTest {
         assertEquals(SIGNATURE_BYPASS_DESCRIPTION, patch.description)
         assertTrue(patch.default)
         assertTrue(patch.options.isEmpty())
-        assertEquals(1, patch.dependencies.size)
-        assertSame(gboardSignatureBypassBytecodePatch, patch.dependencies.single())
+        assertEquals(2, patch.dependencies.size)
+        assertTrue(gboardSignatureBypassBytecodePatch in patch.dependencies)
+        assertTrue(gboardMitmValidationResourcePatch in patch.dependencies)
 
         val compatibilities = checkNotNull(patch.compatibility)
         assertEquals(1, compatibilities.size)
