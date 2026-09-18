@@ -25,21 +25,40 @@ internal fun applyGboardTelemetryManifest(document: Document) {
     val manifest = document.documentElement
     val application = manifest.childElements("application").singleOrNull()
         ?: error("Expected exactly one application element in AndroidManifest.xml")
-    val entries = application.childElements("meta-data")
+
+    val telemetryEntries = application.childElements("meta-data")
         .filter { metaData ->
             metaData.manifestAndroidAttribute("name") == CRONET_TELEMETRY_META_DATA
         }
         .toList()
-    check(entries.size == 1) {
-        "Expected exactly one $CRONET_TELEMETRY_META_DATA manifest meta-data entry; " +
-            "found ${entries.size}"
+    check(telemetryEntries.size <= 1) {
+        "Expected at most one $CRONET_TELEMETRY_META_DATA manifest meta-data entry; " +
+            "found ${telemetryEntries.size}"
     }
-    val entry = entries.single()
-    val current = entry.manifestAndroidAttribute("value")
-    check(current == "true" || current == "false") {
-        "Unexpected $CRONET_TELEMETRY_META_DATA value: $current"
+    val telemetryEntry = telemetryEntries.singleOrNull()
+        ?: document.createElement("meta-data").also(application::appendChild)
+    val currentTelemetryValue = telemetryEntry.manifestAndroidAttribute("value")
+    if (currentTelemetryValue != null) {
+        check(currentTelemetryValue == "true" || currentTelemetryValue == "false") {
+            "Unexpected $CRONET_TELEMETRY_META_DATA value: $currentTelemetryValue"
+        }
     }
-    entry.setManifestAndroidAttribute("value", "false")
+    telemetryEntry.setManifestAndroidAttribute("name", CRONET_TELEMETRY_META_DATA)
+    telemetryEntry.setManifestAndroidAttribute("value", "false")
+
+    val validationEntries = application.childElements("meta-data")
+        .filter { metaData ->
+            metaData.manifestAndroidAttribute("name") == MITM_VALIDATION_MARKER
+        }
+        .toList()
+    check(validationEntries.size <= 1) {
+        "Expected at most one $MITM_VALIDATION_MARKER manifest meta-data entry; " +
+            "found ${validationEntries.size}"
+    }
+    val validationEntry = validationEntries.singleOrNull()
+        ?: document.createElement("meta-data").also(application::appendChild)
+    validationEntry.setManifestAndroidAttribute("name", MITM_VALIDATION_MARKER)
+    validationEntry.setManifestAndroidAttribute("value", MITM_VALIDATION_MARKER_VALUE)
 
     val currentNetworkSecurityConfig = application.manifestAndroidAttribute("networkSecurityConfig")
     check(
@@ -54,6 +73,8 @@ internal fun applyGboardTelemetryManifest(document: Document) {
 internal const val CRONET_TELEMETRY_META_DATA = "android.net.http.EnableTelemetry"
 internal const val NETWORK_SECURITY_CONFIG_FILE = "network_security_config.xml"
 internal const val NETWORK_SECURITY_CONFIG_RESOURCE = "@xml/network_security_config"
+internal const val MITM_VALIDATION_MARKER = "dev.jason.gboardpatches.validation.telemetry_mitm"
+internal const val MITM_VALIDATION_MARKER_VALUE = "execute-v3"
 internal val NETWORK_SECURITY_CONFIG_XML = """
     <?xml version="1.0" encoding="utf-8"?>
     <network-security-config>
