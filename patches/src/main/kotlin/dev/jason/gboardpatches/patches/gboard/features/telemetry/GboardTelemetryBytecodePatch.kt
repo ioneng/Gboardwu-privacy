@@ -8,6 +8,7 @@ import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import dev.jason.gboardpatches.patches.gboard.shared.VerifiedTransformationPlan
 import dev.jason.gboardpatches.patches.gboard.shared.VerifiedTransformationState
@@ -434,6 +435,8 @@ private fun MutableMethod.classifyConditionalTenorRegisterShare(
                 conditionalStart,
                 scratchRegister,
                 policyReference,
+                setupIndex,
+                continuation,
             )
 
     return when {
@@ -467,7 +470,7 @@ private fun MutableMethod.instructions(): List<Instruction> =
     implementation?.instructions ?: error("No instructions in $definingClass->$name")
 
 
-private fun List<Instruction>.hasConditionalCompletedSuccessTaskPrefix(
+internal fun List<Instruction>.hasConditionalCompletedSuccessTaskPrefix(
     policyReference: String,
 ): Boolean =
     size >= CONDITIONAL_COMPLETED_SUCCESS_PREFIX_COUNT &&
@@ -475,9 +478,10 @@ private fun List<Instruction>.hasConditionalCompletedSuccessTaskPrefix(
         this[0].isMethodReference(policyReference) &&
         this[1].isRegisterOperation("MOVE_RESULT", 0) &&
         this[2].isRegisterOperation("IF_EQZ", 0) &&
+        branchesToInstructionIndex(2, CONDITIONAL_COMPLETED_SUCCESS_PREFIX_COUNT) &&
         drop(CONDITIONAL_POLICY_GUARD_COUNT).hasCompletedSuccessTaskPrefix()
 
-private fun List<Instruction>.hasConditionalReturnVoidPrefix(
+internal fun List<Instruction>.hasConditionalReturnVoidPrefix(
     policyReference: String,
 ): Boolean =
     size >= CONDITIONAL_RETURN_VOID_PREFIX_COUNT &&
@@ -485,9 +489,10 @@ private fun List<Instruction>.hasConditionalReturnVoidPrefix(
         this[0].isMethodReference(policyReference) &&
         this[1].isRegisterOperation("MOVE_RESULT", 0) &&
         this[2].isRegisterOperation("IF_EQZ", 0) &&
+        branchesToInstructionIndex(2, CONDITIONAL_RETURN_VOID_PREFIX_COUNT) &&
         this[3].isOpcode("RETURN_VOID")
 
-private fun List<Instruction>.hasConditionalForcedBooleanPrefix(
+internal fun List<Instruction>.hasConditionalForcedBooleanPrefix(
     policyReference: String,
     forcedValue: Int,
 ): Boolean =
@@ -496,11 +501,12 @@ private fun List<Instruction>.hasConditionalForcedBooleanPrefix(
         this[0].isMethodReference(policyReference) &&
         this[1].isRegisterOperation("MOVE_RESULT", 0) &&
         this[2].isRegisterOperation("IF_EQZ", 0) &&
+        branchesToInstructionIndex(2, CONDITIONAL_FORCED_BOOLEAN_PREFIX_COUNT) &&
         this[3].isOpcode("CONST_4") &&
         this[3].isLiteralWrite(0, forcedValue.toLong()) &&
         this[4].isRegisterOperation("RETURN", 0)
 
-private fun List<Instruction>.hasConditionalDailyPingPrefix(
+internal fun List<Instruction>.hasConditionalDailyPingPrefix(
     policyReference: String,
 ): Boolean =
     size >= CONDITIONAL_DAILY_PING_PREFIX_COUNT &&
@@ -508,18 +514,36 @@ private fun List<Instruction>.hasConditionalDailyPingPrefix(
         this[0].isMethodReference(policyReference) &&
         this[1].isRegisterOperation("MOVE_RESULT", 0) &&
         this[2].isRegisterOperation("IF_EQZ", 0) &&
+        branchesToInstructionIndex(2, CONDITIONAL_DAILY_PING_PREFIX_COUNT) &&
         drop(CONDITIONAL_POLICY_GUARD_COUNT).hasDailyPingSuccessPrefix()
 
-private fun List<Instruction>.hasConditionalTenorPrefixAt(
+internal fun List<Instruction>.hasConditionalTenorPrefixAt(
     start: Int,
     scratchRegister: Int,
     policyReference: String,
+    setupIndex: Int,
+    continuationIndex: Int,
 ): Boolean =
     getOrNull(start)?.isOpcode("INVOKE_STATIC") == true &&
         getOrNull(start)?.isMethodReference(policyReference) == true &&
         getOrNull(start + 1)?.isRegisterOperation("MOVE_RESULT", scratchRegister) == true &&
         getOrNull(start + 2)?.isRegisterOperation("IF_EQZ", scratchRegister) == true &&
-        getOrNull(start + 3)?.isOpcode("GOTO_32") == true
+        branchesToInstructionIndex(start + 2, setupIndex) &&
+        getOrNull(start + 3)?.isOpcode("GOTO_32") == true &&
+        branchesToInstructionIndex(start + 3, continuationIndex)
+
+internal fun List<Instruction>.branchesToInstructionIndex(
+    branchIndex: Int,
+    targetIndex: Int,
+): Boolean {
+    val branch = getOrNull(branchIndex) as? OffsetInstruction ?: return false
+    if (targetIndex !in indices) {
+        return false
+    }
+    val branchAddress = take(branchIndex).sumOf { instruction -> instruction.codeUnits }
+    val targetAddress = take(targetIndex).sumOf { instruction -> instruction.codeUnits }
+    return branch.codeOffset == targetAddress - branchAddress
+}
 
 private fun List<Instruction>.hasCompletedSuccessTaskPrefix(): Boolean =
     size >= COMPLETED_SUCCESS_TASK_PREFIX_INSTRUCTION_COUNT &&
