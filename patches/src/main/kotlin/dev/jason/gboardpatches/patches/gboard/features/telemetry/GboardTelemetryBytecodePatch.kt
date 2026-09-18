@@ -26,6 +26,7 @@ import dev.jason.gboardpatches.patches.gboard.shared.runtimeabi.RuntimeCallEmitt
 import dev.jason.gboardpatches.patches.gboard.shared.runtimeabi.RuntimeCallId
 import dev.jason.gboardpatches.patches.shared.Constants.COMPATIBILITY_GBOARD
 
+
 /**
  * Blocks dedicated telemetry/reporting sidecars in the exact Gboard 18.0.3 target while
  * preserving the functional API/network calls that those sidecars observe.
@@ -36,7 +37,12 @@ import dev.jason.gboardpatches.patches.shared.Constants.COMPATIBILITY_GBOARD
  *
  * Intentionally retained: UsageReporting consent plumbing, audit consent records, AppDoctor, auth,
  * OCR execution, voice/Agentic Dictation requests, model/module downloads, remote config,
- * Ten
+ * Tenor search/download, and other feature-required network traffic.
+ */
+internal val gboardTelemetryBytecodePatch = bytecodePatch(
+    description = "封鎖 Gboard、ML Kit、Primes、Google Play Services 與 Tenor 的獨立遙測回報。",
+) {
+    compatibleWith(COMPATIBILITY_GBOARD)
     dependsOn(gboardPatchesExtensionCarrierPatch)
 
     execute {
@@ -95,13 +101,7 @@ import dev.jason.gboardpatches.patches.shared.Constants.COMPATIBILITY_GBOARD
             forcedValue = 0,
         )
     }
-}:validatePrimesStartupStockBody)
-        patchReturnVoidNoOp(PRIMES_NATIVE_CRASH_TARGET, ::validatePrimesNativeCrashStockBody)
-        patchReturnVoidNoOp(PRIMES_LIFEBOAT_TARGET, ::validatePrimesLifeboatStockBody)
-        patchTenorRegisterShare()
-    }
 }
-
 
 context(context: BytecodePatchContext)
 private fun patchConditionalCompletedTaskNoOp(
