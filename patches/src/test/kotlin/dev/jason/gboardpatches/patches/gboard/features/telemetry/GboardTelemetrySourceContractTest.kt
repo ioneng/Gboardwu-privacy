@@ -6,14 +6,14 @@ import org.junit.Test
 
 class GboardTelemetrySourceContractTest {
     @Test
-    fun `telemetry patch keeps functional APIs out of scope`() {
+    fun `telemetry patch keeps functional APIs out of scope and exposes runtime policy guards`() {
         val bytecode = read(
             "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/telemetry/" +
                 "GboardTelemetryBytecodePatch.kt",
         )
-        val manifest = read(
+        val marker = read(
             "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/telemetry/" +
-                "GboardTelemetryManifestPatch.kt",
+                "GboardTelemetryFeatureMarkerPatch.kt",
         )
 
         listOf(
@@ -29,6 +29,14 @@ class GboardTelemetrySourceContractTest {
             "Lqvz;->j:Lnxp;",
             "Failed to register Tenor share",
             "goto/32 :tenor_after_register_share",
+            "Lacru;",
+            "android.net.http.EnableTelemetry",
+            "TELEMETRY_RUNTIME_SHOULD_BLOCK_CLEARCUT",
+            "TELEMETRY_RUNTIME_SHOULD_BLOCK_GOOGLE_PLAY_SERVICES",
+            "TELEMETRY_RUNTIME_SHOULD_BLOCK_DAILY_PING",
+            "TELEMETRY_RUNTIME_SHOULD_BLOCK_PRIMES",
+            "TELEMETRY_RUNTIME_SHOULD_BLOCK_TENOR",
+            "TELEMETRY_RUNTIME_SHOULD_BLOCK_CRONET",
         ).forEach { token -> check(token in bytecode) { "Missing $token" } }
 
         listOf(
@@ -44,8 +52,9 @@ class GboardTelemetrySourceContractTest {
             "usesCleartextTraffic",
         ).forEach { token -> check(token !in bytecode) { "Out-of-scope token $token" } }
 
-        check("android.net.http.EnableTelemetry" in manifest)
-        check("setManifestAndroidAttribute(\"value\", \"false\")" in manifest)
+        check("dev.jason.gboardpatches.feature.telemetry_blocking" in marker)
+        check("android.net.http.EnableTelemetry" !in marker)
+        check("setManifestAndroidAttribute(\"value\", \"false\")" !in marker)
     }
 
     private fun read(relative: String): String = Files.readString(repoRoot().resolve(relative))
