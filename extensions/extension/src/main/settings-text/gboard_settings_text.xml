@@ -3007,7 +3007,7 @@
         <translation locale="zh-Hant">部分遙測已允許</translation>
     </string>
     <string name="gboard_patches_telemetry_status_partially_allowed_summary">
-        <translation locale="en">One or more telemetry groups are configured to use Gboard's stock reporting behavior.</translation>
+        <translation locale="en">One or more telemetry groups are configured to use Gboard’s stock reporting behavior.</translation>
         <translation locale="zh-Hant">一個或多個遙測群組已設定為使用 Gboard 原本的回報行為。</translation>
     </string>
     <string name="gboard_patches_telemetry_error_title">
@@ -3058,7 +3058,7 @@
         <translation locale="zh-Hant">Gboard Daily Ping</translation>
     </string>
     <string name="gboard_patches_telemetry_daily_description">
-        <translation locale="en">Controls Gboard's periodic Daily Ping metrics worker. When blocked, the worker still returns a successful result so WorkManager does not retry it.</translation>
+        <translation locale="en">Controls Gboard’s periodic Daily Ping metrics worker. When blocked, the worker still returns a successful result so WorkManager does not retry it.</translation>
         <translation locale="zh-Hant">控制 Gboard 的週期性 Daily Ping 指標工作。封鎖時仍回傳成功結果，避免 WorkManager 因失敗而重試。</translation>
     </string>
     <string name="gboard_patches_telemetry_daily_toggle">
@@ -3109,7 +3109,7 @@
         <translation locale="zh-Hant">Cronet 網路遙測</translation>
     </string>
     <string name="gboard_patches_telemetry_cronet_description">
-        <translation locale="en">Controls Cronet's Android StatsLog / statsd operational telemetry. Cronet networking itself remains enabled.</translation>
+        <translation locale="en">Controls Cronet’s Android StatsLog / statsd operational telemetry. Cronet networking itself remains enabled.</translation>
         <translation locale="zh-Hant">控制 Cronet 的 Android StatsLog / statsd 作業遙測。Cronet 網路功能本身仍保持啟用。</translation>
     </string>
     <string name="gboard_patches_telemetry_cronet_toggle">
