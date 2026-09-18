@@ -14,6 +14,7 @@ import java.util.Map;
 
 import dev.jason.gboardpatches.extension.symbolfooter.GboardSymbolFooterOrderSettings;
 import dev.jason.gboardpatches.extension.toprowswipe.GboardTopRowSwipeSettings;
+import dev.jason.gboardpatches.extension.telemetry.GboardTelemetryRuntime;
 
 public final class GboardPatchesSettingsProvider extends ContentProvider {
     private static final String TAG = "GboardPatches";
@@ -32,6 +33,11 @@ public final class GboardPatchesSettingsProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
+        try {
+            GboardTelemetryRuntime.initialize(getContext());
+        } catch (Throwable throwable) {
+            Log.w(TAG, "Failed to initialize telemetry runtime policy", throwable);
+        }
         return true;
     }
 
