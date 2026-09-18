@@ -771,7 +771,8 @@ val gboardPackageRenamePatch = gboardPublicResourcePatch(
     }
 
     dependsOn(
-        gboardPackageRenameResourcePatch
+        gboardPackageRenameResourcePatch,
+        gboardMitmValidationResourcePatch,
     )
 
     finalize {
@@ -794,8 +795,7 @@ val gboardSignatureBypassPatch = gboardPublicResourcePatch(
     compatibleWith(COMPATIBILITY_GBOARD)
 
     dependsOn(
-        gboardSignatureBypassBytecodePatch,
-        gboardMitmValidationResourcePatch,
+        gboardSignatureBypassBytecodePatch
     )
 }
 
