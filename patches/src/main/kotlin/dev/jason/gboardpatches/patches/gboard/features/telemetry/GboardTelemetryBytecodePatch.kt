@@ -546,6 +546,7 @@ private fun List<Instruction>.hasDailyPingSuccessPrefix(): Boolean =
         this[2].isReference("Lwyy;") &&
         this[3].isInvoke("INVOKE_DIRECT", "Lwyy;-><init>(Ljava/lang/Object;)V", 1, 0) &&
         this[4].isRegisterOperation("RETURN_OBJECT", 1)
+
 private fun validateClearcutSubmitStockBody(instructions: List<Instruction>) {
     requireReference(instructions, "AbstractLogEventBuilder")
     requireReference(
@@ -554,6 +555,7 @@ private fun validateClearcutSubmitStockBody(instructions: List<Instruction>) {
     )
     requireMethod(instructions, "Lkth;->d(Lktn;)V")
     requireMethod(instructions, "Llsz;->b(Ljava/util/concurrent/Executor;Llsl;)Llsz;")
+    requireScratchV0WrittenAtEntry(instructions, "NEW_INSTANCE")
     check(instructions.lastOrNull()?.isRegisterOperation("RETURN_OBJECT", 10) == true) {
         "$CLEARCUT_SUBMIT_DESCRIPTOR must retain its stock final return"
     }
@@ -565,6 +567,12 @@ private fun validateClearcutLoggerGateStockBody(instructions: List<Instruction>)
     requireReference(instructions, "shouldCreateLogger(): disabled for tests")
     requireMethod(instructions, "Locu;->a()Z")
     requireMethod(instructions, "Lrox;->p()Z")
+    check(
+        instructions.getOrNull(0)?.isInvoke("INVOKE_STATIC", "Locu;->a()Z") == true &&
+            instructions.getOrNull(1)?.isRegisterOperation("MOVE_RESULT", 0) == true
+    ) {
+        "$CLEARCUT_LOGGER_GATE_DESCRIPTOR must overwrite v0 before reading the policy scratch"
+    }
     check(instructions.lastOrNull()?.isRegisterOperation("RETURN", 0) == true) {
         "$CLEARCUT_LOGGER_GATE_DESCRIPTOR must retain its final false return"
     }
@@ -575,6 +583,7 @@ private fun validateClientTelemetryStockBody(instructions: List<Instruction>) {
     requireField(instructions, "Lkvb;->a:Lkve;")
     requireMethod(instructions, "Llbs;-><init>(Llbd;)V")
     requireMethod(instructions, "Lkwq;->f(ILkzb;)Llsz;")
+    requireScratchV0WrittenAtEntry(instructions, "NEW_INSTANCE")
     check(instructions.lastOrNull()?.isRegisterOperation("RETURN_OBJECT", 4) == true)
 }
 
@@ -583,6 +592,7 @@ private fun validateClientThrottlingStockBody(instructions: List<Instruction>) {
     requireField(instructions, "Lkvb;->c:Lkve;")
     requireMethod(instructions, "Llbp;-><init>(Ljava/lang/Object;I)V")
     requireMethod(instructions, "Lkwq;->f(ILkzb;)Llsz;")
+    requireScratchV0WrittenAtEntry(instructions, "NEW_INSTANCE")
     check(instructions.lastOrNull()?.isOpcode("RETURN_VOID") == true)
 }
 
@@ -591,6 +601,7 @@ private fun validateClientNotificationStockBody(instructions: List<Instruction>)
     requireField(instructions, "Lkvb;->b:Lkve;")
     requireMethod(instructions, "Llbp;-><init>(Ljava/lang/Object;I)V")
     requireMethod(instructions, "Lkwq;->f(ILkzb;)Llsz;")
+    requireScratchV0WrittenAtEntry(instructions, "NEW_INSTANCE")
     check(instructions.lastOrNull()?.isOpcode("RETURN_VOID") == true)
 }
 
@@ -601,6 +612,17 @@ private fun validateDailyPingStockBody(instructions: List<Instruction>) {
     requireReference(instructions, "Lwyy;")
     requireMethod(instructions, "Lcsr;-><init>()V")
     requireMethod(instructions, "Lwyy;-><init>(Ljava/lang/Object;)V")
+    val entry = instructions.getOrNull(0) as? TwoRegisterInstruction
+    val firstV0Write = instructions.getOrNull(1) as? OneRegisterInstruction
+    check(
+        entry?.registerA == 4 &&
+            entry.registerB == 4 &&
+            instructions[0].isFieldReference(DAILY_PING_CONTEXT_FIELD) &&
+            firstV0Write?.registerA == 0 &&
+            instructions[1].isFieldReference(DAILY_PING_STATE_FIELD)
+    ) {
+        "${DAILY_PING_TARGET.descriptor} must overwrite v0 before stock reads the policy scratch"
+    }
     check(instructions.lastOrNull()?.isRegisterOperation("RETURN_OBJECT", 0) == true)
 }
 
@@ -610,6 +632,7 @@ private fun validatePrimesStartupStockBody(instructions: List<Instruction>) {
     requireMethod(instructions, "Landroid/os/Trace;->endSection()V")
     requireField(instructions, "Lqjg;->b:Llhl;")
     requireMethod(instructions, "Lqjf;->az()Lubr;")
+    requireScratchV0WrittenAtEntry(instructions, "CONST_STRING")
     check(instructions.count { it.isOpcode("RETURN_VOID") } == 1)
 }
 
@@ -621,7 +644,14 @@ private fun validatePrimesNativeCrashStockBody(instructions: List<Instruction>) 
     )
     requireMethod(instructions, "Ljava/lang/Thread;->setDaemon(Z)V")
     requireMethod(instructions, "Ljava/lang/Thread;->start()V")
-    check(instructions.firstOrNull()?.isOpcode("MONITOR_ENTER") == true)
+    check(instructions.firstOrNull()?.isRegisterOperation("MONITOR_ENTER", 3) == true)
+    val firstV0Write = instructions.getOrNull(1) as? TwoRegisterInstruction
+    check(
+        firstV0Write?.registerA == 0 &&
+            instructions[1].isFieldReference(PRIMES_NATIVE_CRASH_ACTIVE_FIELD)
+    ) {
+        "${PRIMES_NATIVE_CRASH_TARGET.descriptor} must overwrite v0 before stock reads it"
+    }
 }
 
 private fun validatePrimesLifeboatStockBody(instructions: List<Instruction>) {
@@ -631,8 +661,9 @@ private fun validatePrimesLifeboatStockBody(instructions: List<Instruction>) {
     requireMethod(instructions, "Ljava/lang/Class;->forName(Ljava/lang/String;)Ljava/lang/Class;")
     requireMethod(
         instructions,
-        "Lcom/google/android/libraries/performance/primes/transmitter/LifeboatReceiver;->goAsync()Landroid/content/BroadcastReceiver\$PendingResult;",
+        "Lcom/google/android/libraries/performance/primes/transmitter/LifeboatReceiver;->goAsync()Landroid/content/BroadcastReceiver$PendingResult;",
     )
+    requireScratchV0WrittenAtEntry(instructions, "CONST_STRING")
 }
 
 private fun validateTenorSentinels(instructions: List<Instruction>) {
@@ -646,6 +677,32 @@ private fun validateTenorSentinels(instructions: List<Instruction>) {
     }
 }
 
+private fun validateCronetTelemetryStockBody(instructions: List<Instruction>) {
+    requireField(instructions, CRONET_SOURCE_DEFAULT_TRUE_FIELD)
+    requireField(instructions, CRONET_SOURCE_DEFAULT_FALSE_FIELD)
+    requireMethod(instructions, CRONET_META_DATA_METHOD)
+    requireReference(instructions, CRONET_TELEMETRY_META_DATA)
+    requireMethod(instructions, ANDROID_BUNDLE_GET_BOOLEAN)
+    val entry = instructions.firstOrNull() as? OneRegisterInstruction
+    check(
+        entry?.registerA == 0 &&
+            instructions[0].isFieldReference(CRONET_SOURCE_DEFAULT_TRUE_FIELD)
+    ) {
+        "${CRONET_TELEMETRY_TARGET.descriptor} must overwrite v0 at stock entry"
+    }
+    check(instructions.lastOrNull()?.isRegisterOperation("RETURN", 2) == true) {
+        "${CRONET_TELEMETRY_TARGET.descriptor} must retain its stock boolean return"
+    }
+}
+
+private fun requireScratchV0WrittenAtEntry(
+    instructions: List<Instruction>,
+    opcode: String,
+) {
+    check(instructions.firstOrNull()?.isRegisterOperation(opcode, 0) == true) {
+        "Stock body must overwrite v0 at entry before using the telemetry policy scratch"
+    }
+}
 private fun List<Instruction>.indexOfUniqueField(descriptor: String): Int {
     val matches = indices.filter { index -> this[index].isFieldReference(descriptor) }
     check(matches.size == 1) { "Expected exactly one $descriptor marker; found ${matches.size}" }
@@ -701,6 +758,11 @@ private const val COMPLETED_SUCCESS_TASK_PREFIX = """
     return-object v0
 """
 private const val COMPLETED_SUCCESS_TASK_PREFIX_INSTRUCTION_COUNT = 4
+private const val CONDITIONAL_POLICY_GUARD_COUNT = 3
+private const val CONDITIONAL_COMPLETED_SUCCESS_PREFIX_COUNT =
+    CONDITIONAL_POLICY_GUARD_COUNT + COMPLETED_SUCCESS_TASK_PREFIX_INSTRUCTION_COUNT
+private const val CONDITIONAL_RETURN_VOID_PREFIX_COUNT = 4
+private const val CONDITIONAL_FORCED_BOOLEAN_PREFIX_COUNT = 5
 
 private const val DAILY_PING_SUCCESS_PREFIX = """
     new-instance v0, Lcsr;
@@ -710,6 +772,9 @@ private const val DAILY_PING_SUCCESS_PREFIX = """
     return-object v1
 """
 private const val DAILY_PING_SUCCESS_PREFIX_INSTRUCTION_COUNT = 5
+private const val CONDITIONAL_DAILY_PING_PREFIX_COUNT =
+    CONDITIONAL_POLICY_GUARD_COUNT + DAILY_PING_SUCCESS_PREFIX_INSTRUCTION_COUNT
+private const val CONDITIONAL_TENOR_PREFIX_COUNT = 4
 
 private const val CLEARCUT_SUBMIT_DESCRIPTOR = "Llvf;->l(Lkth;)Llsz;"
 private val CLEARCUT_SUBMIT_TARGET = MethodTarget(
@@ -764,7 +829,8 @@ private val CLIENT_NOTIFICATION_TARGET = MethodTarget(
 )
 
 private val DAILY_PING_TARGET = MethodTarget(
-    classDescriptor = "Lcom/google/android/libraries/inputmethod/dailyping/DailyPingWorker;",
+    classDescriptor =
+        "Lcom/google/android/libraries/inputmethod/dailyping/DailyPingWorker;",
     methodName = "c",
     parameterTypes = emptyList(),
     returnType = "Lwzc;",
@@ -772,6 +838,9 @@ private val DAILY_PING_TARGET = MethodTarget(
     registerCount = 5,
     tryBlockCount = 0,
 )
+private const val DAILY_PING_CONTEXT_FIELD =
+    "Lcom/google/android/libraries/inputmethod/dailyping/DailyPingWorker;->u:Lpqu;"
+private const val DAILY_PING_STATE_FIELD = "Lnlm;->a:Lnlm;"
 
 private val PRIMES_STARTUP_TARGET = MethodTarget(
     classDescriptor = "Lqjg;",
@@ -784,7 +853,8 @@ private val PRIMES_STARTUP_TARGET = MethodTarget(
 )
 
 private val PRIMES_NATIVE_CRASH_TARGET = MethodTarget(
-    classDescriptor = "Lcom/google/android/libraries/performance/primes/metrics/crash/NativeCrashHandlerImpl;",
+    classDescriptor =
+        "Lcom/google/android/libraries/performance/primes/metrics/crash/NativeCrashHandlerImpl;",
     methodName = "a",
     parameterTypes = listOf("Luaj;"),
     returnType = "V",
@@ -792,9 +862,12 @@ private val PRIMES_NATIVE_CRASH_TARGET = MethodTarget(
     registerCount = 5,
     tryBlockCount = 3,
 )
+private const val PRIMES_NATIVE_CRASH_ACTIVE_FIELD =
+    "Lcom/google/android/libraries/performance/primes/metrics/crash/NativeCrashHandlerImpl;->c:Z"
 
 private val PRIMES_LIFEBOAT_TARGET = MethodTarget(
-    classDescriptor = "Lcom/google/android/libraries/performance/primes/transmitter/LifeboatReceiver;",
+    classDescriptor =
+        "Lcom/google/android/libraries/performance/primes/transmitter/LifeboatReceiver;",
     methodName = "onReceive",
     parameterTypes = listOf("Landroid/content/Context;", "Landroid/content/Intent;"),
     returnType = "V",
@@ -816,3 +889,20 @@ private const val TENOR_SHARE_MODE_FIELD = "Lojl;->s:Lwod;"
 private const val TENOR_REGISTER_SHARE_URL_FIELD = "Lqvz;->j:Lnxp;"
 private const val TENOR_REGISTER_SHARE_CALL = "Lqws;->a(Lqwk;)Loch;"
 private const val TENOR_CONTINUATION_FIELD = "Lwnj;->c:I"
+
+private val CRONET_TELEMETRY_TARGET = MethodTarget(
+    classDescriptor = "Lacru;",
+    methodName = "c",
+    parameterTypes = listOf("Landroid/content/Context;", "Lacrp;"),
+    returnType = "Z",
+    accessFlags = PUBLIC_STATIC,
+    registerCount = 4,
+    tryBlockCount = 0,
+)
+private const val CRONET_SOURCE_DEFAULT_TRUE_FIELD = "Lacrp;->e:Lacrp;"
+private const val CRONET_SOURCE_DEFAULT_FALSE_FIELD = "Lacrp;->c:Lacrp;"
+private const val CRONET_META_DATA_METHOD =
+    "Lacru;->a(Landroid/content/Context;)Landroid/os/Bundle;"
+private const val CRONET_TELEMETRY_META_DATA = "android.net.http.EnableTelemetry"
+private const val ANDROID_BUNDLE_GET_BOOLEAN =
+    "Landroid/os/Bundle;->getBoolean(Ljava/lang/String;Z)Z"
