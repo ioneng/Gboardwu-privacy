@@ -1,0 +1,44 @@
+name: GboardWu MITM control
+
+on:
+  push:
+    branches:
+      - validation/gboardwu-mitm-control
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  verify:
+    name: Test and build control
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Cache Gradle
+        uses: burrunan/gradle-cache-action@v3
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Test and build
+        env:
+          GITHUB_ACTOR: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ secrets.MORPHE_PACKAGES_TOKEN || github.token }}
+        run: ./gradlew test :patches:buildAndroid generatePatchesList
+
+      - name: Upload control patch build
+        uses: actions/upload-artifact@v4
+        with:
+          name: gboardwu-mitm-control
+          path: patches/build/libs/patches-*.mpp
+          if-no-files-found: error
