@@ -1,24 +1,18 @@
 package dev.jason.gboardpatches.patches.gboard.validation
 
-import app.morphe.patcher.patch.resourcePatch
+import app.morphe.patcher.patch.ResourcePatchContext
 import dev.jason.gboardpatches.patches.gboard.shared.childElements
 import dev.jason.gboardpatches.patches.gboard.shared.manifestAndroidAttribute
 import dev.jason.gboardpatches.patches.gboard.shared.setManifestAndroidAttribute
-import dev.jason.gboardpatches.patches.shared.Constants.COMPATIBILITY_GBOARD
 import org.w3c.dom.Document
 
-internal val gboardMitmValidationResourcePatch = resourcePatch(
-    description = "Temporary PCAPdroid validation trust config.",
-) {
-    compatibleWith(COMPATIBILITY_GBOARD)
-
-    execute {
-        this["res/xml/$MITM_NETWORK_SECURITY_CONFIG_FILE", false].apply {
-            parentFile.mkdirs()
-            writeText(MITM_NETWORK_SECURITY_CONFIG_XML)
-        }
-        document("AndroidManifest.xml").use(::applyMitmValidationManifest)
+context(context: ResourcePatchContext)
+internal fun applyMitmValidationResources() = with(context) {
+    this["res/xml/$MITM_NETWORK_SECURITY_CONFIG_FILE", false].apply {
+        parentFile.mkdirs()
+        writeText(MITM_NETWORK_SECURITY_CONFIG_XML)
     }
+    document("AndroidManifest.xml").use(::applyMitmValidationManifest)
 }
 
 internal fun applyMitmValidationManifest(document: Document) {
