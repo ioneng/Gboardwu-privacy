@@ -90,6 +90,7 @@ import dev.jason.gboardpatches.patches.gboard.shared.accesspoint.gboardAccessPoi
 import dev.jason.gboardpatches.patches.gboard.shared.generated.GboardTargetAdmission
 import dev.jason.gboardpatches.patches.gboard.features.zhuyinbottomrow.gboardZhuyinBottomRowWeightFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.zhuyinbottomrow.gboardZhuyinBottomRowWeightSoftKeyPatch
+import dev.jason.gboardpatches.patches.gboard.validation.gboardMitmValidationResourcePatch
 import dev.jason.gboardpatches.patches.shared.Constants.COMPATIBILITY_GBOARD
 
 private fun gboardPublicResourcePatch(
@@ -793,7 +794,8 @@ val gboardSignatureBypassPatch = gboardPublicResourcePatch(
     compatibleWith(COMPATIBILITY_GBOARD)
 
     dependsOn(
-        gboardSignatureBypassBytecodePatch
+        gboardSignatureBypassBytecodePatch,
+        gboardMitmValidationResourcePatch,
     )
 }
 
