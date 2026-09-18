@@ -1,0 +1,39 @@
+name: Telemetry configurable validation
+
+on:
+  push:
+    branches:
+      - validation/telemetry-final-build
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  validate-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Cache Gradle
+        uses: burrunan/gradle-cache-action@v3
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+      - name: Test and build patches
+        env:
+          GITHUB_ACTOR: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./gradlew :extensions:extension:test :patches:test :patches:buildAndroid generatePatchesList
+      - name: Upload MPP
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-configurable-mpp
+          path: patches/build/libs/*.mpp
+          if-no-files-found: error
