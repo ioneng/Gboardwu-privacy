@@ -15,6 +15,7 @@ import dev.jason.gboardpatches.extension.keyboard.GboardKeyboardLayoutSettingsGr
 import dev.jason.gboardpatches.extension.keyboard.GboardKeyboardToolsSettingsGroupFeature;
 import dev.jason.gboardpatches.extension.lanftp.settings.GboardLanFtpSettingsFeature;
 import dev.jason.gboardpatches.extension.settingshomepage.GboardSettingsHomepageSettingsFeature;
+import dev.jason.gboardpatches.extension.telemetry.GboardTelemetrySettingsFeature;
 
 public final class GboardPatchesSettingsFeatureRegistry {
     private static final String TAG = "GboardPatches";
@@ -25,6 +26,7 @@ public final class GboardPatchesSettingsFeatureRegistry {
     public static List<GboardPatchesSettingsContract.Feature> features(Context context) {
         List<GboardPatchesSettingsContract.Feature> features =
                 new ArrayList<GboardPatchesSettingsContract.Feature>();
+        addIfAvailable(context, features, new GboardTelemetrySettingsFeature(context));
         addIfAvailable(context, features, new GboardAiVoiceSettingsGroupFeature(context));
         addIfAvailable(context, features, new GboardKeyboardToolsSettingsGroupFeature(context));
         addIfAvailable(context, features, new GboardKeyboardLayoutSettingsGroupFeature(context));
