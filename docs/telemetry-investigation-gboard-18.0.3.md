@@ -1,6 +1,6 @@
 # Gboard 18.0.3 Telemetry and Diagnostics Investigation
 
-**Status:** Investigation complete; implementation built, statically validated, and primary runtime/network paths validated  
+**Status:** Investigation complete; merged baseline runtime validated; configurable follow-up repository-validated  
 **Target package:** `com.google.android.inputmethod.latin`  
 **Target version:** `18.0.3.954559732-release`  
 **Version code:** `175940518`  
@@ -114,7 +114,7 @@ The dedicated reporting systems identified in this build are:
 8. Tenor `registershare` tracking;
 9. Cronet Android telemetry written through Android StatsLog/statsd.
 
-The final patch suppresses those paths without intentionally disabling the corresponding functional APIs.
+By default, the current patch suppresses those paths without intentionally disabling the corresponding functional APIs. The configurable follow-up can restore each supported group to its stock path after an explicit user setting change and Gboard restart.
 
 The investigation also classified several nearby systems that should **not** be treated as ordinary telemetry:
 
@@ -547,13 +547,15 @@ The target manifest contains:
 
 Cronet's Android telemetry path writes operational data through Android `StatsLog`/statsd rather than through a dedicated Gboard HTTP telemetry endpoint.
 
-The patch changes the metadata value to:
+The merged all-blocking implementation originally forced this manifest value to `false`. The configurable follow-up replaces that static mutation with a runtime guard at:
 
-```xml
-android:value="false"
+```text
+Lacru;->c(Landroid/content/Context;Lacrp;)Z
 ```
 
-This disables Cronet's Android telemetry integration while retaining Cronet networking itself.
+When **Block Cronet StatsLog telemetry** is enabled, the guard returns `false` before the stock telemetry decision proceeds. When the switch is disabled, execution resumes at the original method and stock `android.net.http.EnableTelemetry` behavior is preserved.
+
+This keeps Cronet networking itself enabled while making its StatsLog telemetry policy reversible from the settings UI.
 
 ## 17. AICore reflective StatsLog path
 
@@ -694,9 +696,9 @@ The patch blocks reporting about some of these operations through ClientTelemetr
 
 ## 24. Implemented bytecode targets
 
-The final implementation contains ten bytecode targets.
+The configurable implementation contains eleven bytecode targets.
 
-| # | Target | Behavior |
+| # | Target | Behavior when its group is blocked |
 | ---: | --- | --- |
 | 1 | `Llvf;->l(Lkth;)Llsz;` | central Clearcut submission -> completed-success Task |
 | 2 | `Lprn;->b()Z` | Gboard Clearcut logger gate -> suppress logger creation |
@@ -708,8 +710,9 @@ The final implementation contains ten bytecode targets.
 | 8 | `Llbr;->a(Lkzr;)V` | ClientThrottlingTelemetry -> `return-void` |
 | 9 | `Llbo;->a(Lkzn;)V` | ClientNotificationTelemetry -> `return-void` |
 | 10 | `Lgqq;->E(Lwnj;Lgkc;)V` | selective branch around Tenor `registershare` only |
+| 11 | `Lacru;->c(Context,Lacrp;)Z` | force Cronet telemetry decision false |
 
-A separate manifest patch disables Cronet telemetry metadata.
+Each target is guarded by a runtime preference. A false block decision branches back to the exact stock continuation rather than permanently replacing the functional code path.
 
 ## 25. Public patch structure
 
@@ -725,14 +728,21 @@ Feature ID:
 block_gboard_telemetry
 ```
 
+Feature marker:
+
+```text
+dev.jason.gboardpatches.feature.telemetry_blocking
+```
+
 The public registry entry depends on:
 
-- the telemetry bytecode patch;
-- the telemetry manifest/resource patch.
+- the shared Gboard Patches settings patch;
+- the telemetry feature-marker patch;
+- the telemetry bytecode patch.
 
-The product catalog was advanced to version `1.13.0` and includes the new version-sensitive feature.
+The product catalog remains version-sensitive and records the telemetry feature marker, current consumer files, and all six runtime policy calls.
 
-The implementation remains selected-only: the internal telemetry transformations are only active when the public feature is selected.
+The standalone telemetry manifest patch has been removed. The implementation remains selected-only: internal telemetry transformations are active only when the public feature is selected.
 
 ## 26. Patch-safety design choices
 
@@ -864,13 +874,13 @@ This runtime result confirms the intended Tenor behavior for the tested build: f
 
 The user-CA trust change used for HTTPS inspection exists only on the temporary `validation/telemetry-mitm` branch and is not part of the production feature branch.
 
-### Cronet manifest correction found during runtime validation
+### Historical Cronet manifest correction (superseded implementation)
 
-Runtime inspection also exposed a manifest-patching compatibility issue. The first production-style build still contained `android.net.http.EnableTelemetry=true` in the installed APK. In the Morphe Manager 1.31.1 / Patcher 1.14.0 path, the telemetry dependency could also see the Cronet meta-data entry as absent during patch execution.
+Runtime inspection during baseline development exposed a manifest-patching compatibility issue. The first production-style build still contained `android.net.http.EnableTelemetry=true` in the installed APK. In the Morphe Manager 1.31.1 / Patcher 1.14.0 path, the telemetry dependency could also see the Cronet meta-data entry as absent during patch execution.
 
-The production manifest patch was therefore hardened to run during `execute` and to ensure exactly one `android.net.http.EnableTelemetry` entry exists with value `false`. If the source manifest omits the entry, the patch creates it. If more than one matching entry exists, it fails instead of guessing.
+For the all-blocking PR #1 implementation, the manifest patch was therefore hardened to run during `execute` and force the telemetry metadata off. A temporary MITM validation build also demonstrated that execute-stage manifest mutation persisted through the tested patching path.
 
-A temporary MITM validation build using the same execute-stage manifest mutation successfully added its network-security configuration and allowed PCAPdroid HTTPS decryption, providing device-side evidence that execute-stage manifest mutation persists through this patching path.
+That mechanism is now **superseded** on the configurable branch. A static manifest value cannot represent a user-selectable allow/block policy, so the current implementation guards `Lacru;->c(Context,Lacrp;)Z` instead. The old manifest work remains historical validation evidence, not the current production mechanism.
 
 ### Remaining limitations
 
@@ -915,7 +925,7 @@ The highest-value finding after the initial pass was that ML Kit has an independ
 
 The implementation deliberately avoids disabling functional Google APIs and instead intercepts reporting sidecars at narrow terminal points.
 
-The code has passed repository build/tests and exact-APK structural validation. Primary patched-APK runtime and network validation is also complete, including direct decrypted confirmation that a fresh Tenor search and GIF send do not emit `/v2/registershare`.
+The current configurable code passes repository tests/build/generation, including exact conditional-branch destination tests. The merged all-blocking baseline also passed exact-APK structural validation and primary patched-APK runtime/network validation, including direct decrypted confirmation that a fresh Tenor search and GIF send did not emit `/v2/registershare`. A fresh device regression of the configurable allow/unblock paths remains outstanding.
 
 ---
 

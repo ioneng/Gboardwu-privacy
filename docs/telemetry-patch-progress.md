@@ -1,180 +1,200 @@
 # Block Gboard Telemetry - Progress Update
 
 **Branch:** `feature/block-gboard-telemetry`  
-**PR:** #1, `Block Gboard telemetry`  
+**Merged baseline PR:** #1, `Block Gboard telemetry`  
+**Merged baseline commit:** `74c17f4a173995eeb069c910a5a5a852f1d1d084`  
 **Target:** Gboard `18.0.3.954559732-release` (`175940518`, arm64-v8a)  
 **Updated:** 2026-09-18
 
 ## Current status
 
-The **Block Gboard Telemetry** implementation is complete for the defined Gboard 18.0.3 scope.
+PR #1 merged the original all-blocking telemetry patch after static, build, device, and network validation.
 
-Current state:
+Development then continued on this branch to add **per-source telemetry controls** inside the existing Gboard Patches settings UI.
 
-- investigation: **complete for the defined telemetry scope**;
-- implementation: **complete**;
-- public patch and catalog wiring: **complete**;
-- repository build and test validation: **passed**;
-- exact target APK static validation: **passed**;
-- patch bundle export: **passed**;
-- patched-device functional smoke testing: **passed for the primary exercised paths**;
-- Tenor `/v2/registershare` runtime network validation: **passed**;
-- Cronet manifest handling: **corrected after runtime validation and rebuilt successfully**.
+Current configurable state:
 
-The production feature branch does **not** contain the temporary user-CA trust configuration used for PCAPdroid HTTPS inspection.
+- investigation for the defined Gboard 18.0.3 telemetry scope: **complete**;
+- baseline all-blocking implementation: **merged and device/network validated**;
+- configurable settings/runtime policy: **implemented**;
+- all six configurable groups default to **blocked**;
+- product catalog and feature-marker wiring: **updated**;
+- conditional control-flow validation: **hardened to verify exact branch destinations**;
+- repository tests/build/generation: **passed** on GitHub Actions run `35327198906` at commit `8e3002f45a9be0472b4be45884ed873bac4a237b`;
+- current configurable build device regression: **still required** before claiming the allow/unblock paths are runtime validated.
 
-## Implemented scope
+The production branch contains no PCAPdroid user-CA trust configuration.
 
-The public patch suppresses:
+## Configurable telemetry groups
 
-1. central Clearcut submission, including Gboard and ML Kit `FIREBASE_ML_SDK` Clearcut;
-2. Gboard Clearcut logger creation as defence in depth;
-3. Google Play Services ClientTelemetry;
-4. ClientThrottlingTelemetry reporting while preserving actual throttling;
-5. ClientNotificationTelemetry reporting while preserving GMS error UI;
-6. Daily Ping periodic metrics while returning a successful worker result;
-7. Primes startup;
-8. Primes native-crash sidecar startup;
-9. Primes Lifeboat transmission;
-10. Tenor `/v2/registershare` tracking only;
-11. Cronet Android telemetry via `android.net.http.EnableTelemetry=false`.
+The settings screen exposes six independent groups:
 
-The implementation intentionally leaves functional online features intact.
+1. **Gboard & ML Kit Clearcut**
+2. **Google Play services telemetry**
+3. **Gboard Daily Ping**
+4. **Primes diagnostics**
+5. **Tenor share tracking**
+6. **Cronet network telemetry**
+
+Every preference defaults to blocking. Preference read failures also fail closed to blocking.
+
+Changes are persisted in Gboard Patches settings and take effect after restarting Gboard from the Patches toolbar so process-local runtime policy caches are recreated.
+
+## Current implementation
+
+The configurable implementation uses runtime policy guards rather than permanently replacing every stock path.
+
+When a group is blocked, its narrow telemetry path takes the same successful/no-op behavior used by the merged baseline patch. When a group is allowed, execution branches back to the original Gboard code.
+
+Current bytecode targets:
+
+| # | Target | Blocked behavior |
+| ---: | --- | --- |
+| 1 | `Llvf;->l(Lkth;)Llsz;` | Clearcut submission returns completed-success Task |
+| 2 | `Lprn;->b()Z` | suppress Gboard Clearcut logger creation |
+| 3 | `Llbu;->a(Llbd;)Llsz;` | ClientTelemetry returns completed-success Task |
+| 4 | `Llbr;->a(Lkzr;)V` | ClientThrottlingTelemetry no-op |
+| 5 | `Llbo;->a(Lkzn;)V` | ClientNotificationTelemetry no-op |
+| 6 | `DailyPingWorker;->c()Lwzc;` | return successful worker result |
+| 7 | `Lqjg;->fG(Context,Lptt;)V` | skip Primes startup |
+| 8 | `NativeCrashHandlerImpl;->a(Luaj;)V` | skip native-crash sidecar |
+| 9 | `LifeboatReceiver;->onReceive(Context,Intent)V` | skip Lifeboat retransmission |
+| 10 | `Lgqq;->E(Lwnj;Lgkc;)V` | skip only Tenor `/v2/registershare` block |
+| 11 | `Lacru;->c(Context,Lacrp;)Z` | force Cronet telemetry decision false |
+
+The public patch now depends on:
+
+- `gboardPatchesSettingsPatch`;
+- `gboardTelemetryFeatureMarkerPatch`;
+- `gboardTelemetryBytecodePatch`.
+
+The old standalone `GboardTelemetryManifestPatch.kt` was removed. Cronet configurability is implemented at its stock telemetry decision method instead, allowing the switch to restore stock behavior when telemetry is explicitly allowed.
+
+Feature marker:
+
+```text
+dev.jason.gboardpatches.feature.telemetry_blocking
+```
 
 ## Explicitly retained
 
-The following remain unchanged by design:
+The patch continues to leave these functional or consent-related paths unchanged:
 
-- `UsageReporting.API` and Android Usage and diagnostics consent plumbing;
-- `Audit.API` consent and compliance records;
+- `UsageReporting.API` and Android Usage & diagnostics consent plumbing;
+- `Audit.API` consent/compliance records;
 - AppDoctor remote remediation;
 - authentication and account APIs;
 - OCR execution and module install;
 - voice recognition and Agentic Dictation functional requests;
 - model and module downloads;
 - Phenotype and remote configuration;
-- Tenor search, download, and actual share behavior;
+- Tenor search, download, media delivery, insertion, and user-visible sharing;
 - Voice Donation consent infrastructure;
 - other feature-required network traffic.
 
-## Build and static validation
+## Repository validation
 
-The decisive Gradle command remains:
+The reusable branch verification workflow runs:
 
 ```text
-./gradlew :patches:test :patches:buildAndroid generatePatchesList
+./gradlew test :patches:buildAndroid generatePatchesList
 ```
 
-The final production manifest correction was rebuilt on isolated validation branch `validation/telemetry-final-build`.
-
-Final validation run:
+Current configurable implementation:
 
 ```text
-GitHub Actions run: 35308028774
+GitHub Actions run: 35327198906
 Result: success
-Artifact: telemetry-final-squashed-mpp
-Artifact ID: 10531778763
-SHA-256: c1a5d83c194fee759b114b05fe9e1474822abf5957b3793a58b0676e4575a08d
+Head: 8e3002f45a9be0472b4be45884ed873bac4a237b
 ```
 
-The run passed the test/build step and uploaded the MPP artifact successfully.
+The run compiled the new dexlib2 control-flow tests and passed the complete repository test/build/generation gate.
 
-Earlier exact target validation established:
+The telemetry regression tests verify:
 
-- 10/10 target methods matched;
-- class and signature matches passed;
-- access flags matched;
-- register counts matched;
-- try-block counts matched;
-- 56 stock-body, string, method, and field sentinels matched;
-- Tenor branch continuation matched stock control flow;
-- completed-success Task helper behavior matched the expected task type;
-- Daily Ping success object matched the declared worker return interface.
+- exact stock-branch destination for completed-success Task guards;
+- exact stock-branch destination for return-void guards;
+- exact stock-branch destination for forced-boolean guards;
+- exact stock-branch destination for Daily Ping;
+- both Tenor register-share and continuation branch destinations;
+- runtime ABI register shapes for the six policy calls.
 
-## Runtime validation
+The product catalog declares the telemetry feature marker, the current consumer files, all six runtime calls, and a synchronized SHA-256 digest.
 
-Runtime testing was performed on an OPPO CPH2765 running Android 16, using the supported Gboard 18.0.3 target.
+## Baseline exact-target and device validation
 
-The coexistence build used package `dev.jason.com.google.android.inputmethod.latin`. Morphe Manager reported version 1.31.1 with Patcher 1.14.0.
+Before PR #1 was merged, exact target validation established:
 
-The following exercised paths remained functional:
+- 10/10 original telemetry target methods matched;
+- class/signature, access flags, register counts, and try-block counts matched;
+- 56 stock-body/string/method/field sentinels matched;
+- the Tenor skip continuation matched stock control flow;
+- completed-success Task behavior matched the expected task type;
+- Daily Ping success result matched the worker return interface.
 
-- cold startup after selecting the existing **Add Gboard Signature Bypass** patch;
+Runtime testing on an OPPO CPH2765 / Android 16 exercised:
+
+- cold startup;
 - ordinary typing;
 - voice typing;
 - OCR / Scan Text;
-- Tenor category and autocomplete traffic;
+- Tenor category/autocomplete traffic;
 - fresh Tenor search;
-- Tenor GIF media loading;
-- selecting a GIF and sending it to the input box.
+- GIF media loading;
+- selecting and sending a GIF.
 
-Package-scoped logcat inspection did not show the targeted Clearcut or ClientTelemetry terms during the exercised paths. ColorOS log flow control can drop rows, so this is supportive evidence rather than an exhaustive absence proof.
-
-### Tenor direct network check
-
-PCAPdroid was used for app-scoped capture.
-
-For direct HTTPS inspection, a temporary validation-only build trusted user-installed CAs and PCAPdroid QUIC blocking forced Tenor onto decryptable HTTPS. In the decisive fresh-search test, the complete HTTP request list showed:
+A temporary validation-only build trusted user-installed CAs so PCAPdroid could decrypt HTTPS. With QUIC blocked for the test, the decisive Tenor capture showed:
 
 - `GET /v2/search` -> HTTP 200;
 - a subsequent `media.tenor.com` GIF fetch -> HTTP 200;
-- the selected GIF was successfully sent to the input box;
-- no `/v2/registershare` request appeared.
+- the selected GIF successfully sent;
+- no `/v2/registershare` request.
 
-This is direct runtime evidence for the intended Tenor behavior on the tested build: functional search and media delivery remain available while the dedicated share-registration tracking request is suppressed.
+This validates the blocked Tenor behavior of the merged baseline. It does not by itself validate the new user-selectable allow path.
 
-The user-CA trust configuration is confined to `validation/telemetry-mitm` and is intentionally excluded from production.
+## Cronet implementation history
 
-## Cronet manifest correction
-
-Runtime inspection found that the first production-style patched APK still contained:
+The stock target manifest contains:
 
 ```text
 android.net.http.EnableTelemetry=true
 ```
 
-The Morphe Manager 1.31.1 / Patcher 1.14.0 path could also present the decoded manifest without that meta-data entry during patch execution.
+During baseline development, runtime inspection showed that an early manifest mutation did not persist as expected. The merged PR #1 implementation therefore hardened an execute-stage manifest patch that forced the metadata value to `false`.
 
-The production patch now handles that state explicitly:
+That static manifest implementation was valid for an always-blocking patch but could not support a user switch that restores stock behavior.
 
-- manifest mutation runs during `execute`;
-- an existing single `android.net.http.EnableTelemetry` entry is forced to `false`;
-- a missing entry is created with value `false`;
-- duplicate matching entries are rejected rather than guessed;
-- unexpected existing values are rejected.
+The configurable follow-up therefore removes the production manifest mutation and instead guards:
 
-Regression tests cover existing, missing, duplicate, and unexpected-value cases.
+```text
+Lacru;->c(Landroid/content/Context;Lacrp;)Z
+```
 
-A temporary MITM validation build using the same execute-stage manifest mutation successfully persisted its network-security configuration on-device, which provided device-side confirmation that this lifecycle stage survives the tested patching path.
+When Cronet blocking is enabled, the guard returns `false`. When it is disabled, control resumes at the stock method, including its normal `android.net.http.EnableTelemetry` handling.
 
-## Known limitations
+The earlier execute-stage manifest work remains useful validation history, but it is no longer the production mechanism on this branch.
 
-The runtime session did not deliberately force every rare Google Play Services availability or error-notification state. Those paths remain covered primarily by exact-target static analysis and repository tests.
+## Remaining validation before second PR
 
-Package-scoped logcat cannot prove that no targeted event can ever occur under every possible feature state. The runtime evidence should therefore be read together with the static target analysis rather than as a universal traffic absence claim.
+Repository validation is green. The remaining gate is a device regression pass of the **current configurable build**, with particular attention to:
 
-Obfuscated anchors are version-sensitive. A later Gboard version needs a fresh target audit before this patch is treated as compatible.
+- default all-blocked startup and ordinary keyboard use;
+- changing each telemetry group and restarting Gboard;
+- confirming an allowed group actually reaches its stock path;
+- confirming a blocked group still suppresses its reporting path;
+- Tenor search/send behavior with Tenor blocking enabled and disabled;
+- Cronet policy behavior with its switch enabled and disabled;
+- the separate `:primes_lifeboat` process loading the saved Primes policy;
+- rare Google Play services availability/error-notification paths where practical.
 
-## Review focus
-
-Before merge, review should focus on:
-
-- central Clearcut `Llvf.l(...)` completed-success behavior;
-- the defence-in-depth Gboard logger gate;
-- ClientTelemetry completed-success behavior;
-- preservation of real ClientThrottling behavior while suppressing only reporting;
-- preservation of GMS error UI while suppressing ClientNotificationTelemetry;
-- Daily Ping success-result construction;
-- the Tenor selective branch target and continuation;
-- execute-stage Cronet manifest handling;
-- version sensitivity of the obfuscated targets.
+Obfuscated anchors remain version-sensitive. A later Gboard version requires a fresh target audit.
 
 ## Documentation
 
-The detailed investigation, rationale, payload analysis, exact targets, exclusions, static evidence, and runtime evidence are documented in:
+The detailed investigation and rationale remain in:
 
 ```text
 docs/telemetry-investigation-gboard-18.0.3.md
 ```
 
-This file is the concise status and handoff record. The investigation report remains the authoritative technical reference.
+This file is the current branch status/handoff record.

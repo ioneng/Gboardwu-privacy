@@ -22,6 +22,10 @@ Upstream project and original feature work: [jasonwu1994/Gboard-patches](https:/
 <details open>
   <summary><code>Block Gboard Telemetry</code></summary>
 
+  **Configuration**
+
+  All six supported telemetry groups are blocked by default. Open **Gboard Settings → Patches → Telemetry Blocking** to control Clearcut, Google Play services telemetry, Daily Ping, Primes, Tenor share tracking, and Cronet StatsLog independently. Restart Gboard from the Patches toolbar after changing a telemetry switch so every process reloads the policy.
+
   **Blocked reporting paths**
 
   - central Clearcut event submission, covering Gboard logging and ML Kit / OCR `FIREBASE_ML_SDK` logging;
@@ -30,7 +34,7 @@ Upstream project and original feature work: [jasonwu1994/Gboard-patches](https:/
   - Daily Ping periodic metrics;
   - Primes startup, native crash sidecar, and Lifeboat crash retransmission;
   - Tenor `/v2/registershare` share tracking only;
-  - Cronet Android StatsLog telemetry via `android.net.http.EnableTelemetry=false`.
+  - Cronet Android StatsLog telemetry at the stock `android.net.http.EnableTelemetry` decision path.
 
   **Preserved by design**
 
@@ -50,6 +54,8 @@ Upstream project and original feature work: [jasonwu1994/Gboard-patches](https:/
   On the supported Gboard 18.0.3 target, ordinary typing, voice input, OCR, Tenor search, GIF media loading, and sending a GIF were exercised successfully.
 
   A decrypted PCAPdroid capture of a fresh Tenor search showed `GET /v2/search` and the GIF media fetch, with no `/v2/registershare` request after the GIF was sent.
+
+  That device/network evidence was collected for the all-blocking implementation merged in PR #1. The configurable runtime-policy follow-up preserves the same all-blocked defaults and passes repository tests/builds, but its allow/unblock paths still need a fresh device regression pass.
 
   See:
   - [Telemetry investigation](docs/telemetry-investigation-gboard-18.0.3.md)
