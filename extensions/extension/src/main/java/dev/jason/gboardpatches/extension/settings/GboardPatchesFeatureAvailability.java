@@ -79,6 +79,8 @@ public final class GboardPatchesFeatureAvailability {
             "dev.jason.gboardpatches.feature.floating_web_search";
     public static final String FEATURE_SIMPLE_CALCULATOR =
             "dev.jason.gboardpatches.feature.simple_calculator";
+    public static final String FEATURE_TELEMETRY_BLOCKING =
+            "dev.jason.gboardpatches.feature.telemetry_blocking";
 
     private static final String TAG = "GboardPatches";
 
