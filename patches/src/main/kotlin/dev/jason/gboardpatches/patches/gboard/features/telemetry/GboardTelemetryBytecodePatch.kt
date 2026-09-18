@@ -661,7 +661,7 @@ private fun validatePrimesLifeboatStockBody(instructions: List<Instruction>) {
     requireMethod(instructions, "Ljava/lang/Class;->forName(Ljava/lang/String;)Ljava/lang/Class;")
     requireMethod(
         instructions,
-        "Lcom/google/android/libraries/performance/primes/transmitter/LifeboatReceiver;->goAsync()Landroid/content/BroadcastReceiver$PendingResult;",
+        "Lcom/google/android/libraries/performance/primes/transmitter/LifeboatReceiver;->goAsync()Landroid/content/BroadcastReceiver\$PendingResult;",
     )
     requireScratchV0WrittenAtEntry(instructions, "CONST_STRING")
 }
