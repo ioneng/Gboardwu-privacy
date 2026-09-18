@@ -1,7 +1,7 @@
 {
   "$schema": "gboard-port-product-catalog.schema.json",
   "format": "gboard-port-product-catalog.v1",
-  "catalog_version": "1.12.0",
+  "catalog_version": "1.13.0",
   "composition": {
     "selected_only_call_chain": true,
     "runtime_feature_mask": false
@@ -147,6 +147,21 @@
         { "contribution_id": "backup_restore.resources", "anchor_family_id": "resource_only", "phase": "resource", "order": 100, "required_bindings": [], "runtime_calls": [] }
       ]
     },
+    {
+  "feature_id": "block_gboard_telemetry",
+  "public_patch_name": "Block Gboard Telemetry",
+  "feature_marker": null,
+  "target_family_ids": ["telemetry"],
+  "migration_scope": "version-sensitive",
+  "consumer_files": [
+    "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/telemetry/GboardTelemetryBytecodePatch.kt",
+    "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/telemetry/GboardTelemetryManifestPatch.kt",
+    "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/registry/GboardPatchRegistry.kt"
+  ],
+  "contributions": [
+    { "contribution_id": "block_gboard_telemetry.bytecode", "anchor_family_id": "dedicated_bytecode", "phase": "dedicated", "order": 2000, "required_bindings": [], "runtime_calls": [] }
+  ]
+},
     {
       "feature_id": "change_emoji_size",
       "public_patch_name": "Change emoji size",
