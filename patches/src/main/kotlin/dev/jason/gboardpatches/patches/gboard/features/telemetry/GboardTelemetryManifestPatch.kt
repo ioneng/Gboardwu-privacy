@@ -17,9 +17,6 @@ internal val gboardTelemetryManifestPatch = resourcePatch(
             parentFile.mkdirs()
             writeText(NETWORK_SECURITY_CONFIG_XML)
         }
-    }
-
-    finalize {
         document("AndroidManifest.xml").use(::applyGboardTelemetryManifest)
     }
 }
