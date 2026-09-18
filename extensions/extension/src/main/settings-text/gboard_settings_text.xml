@@ -2978,4 +2978,147 @@
         <translation locale="en">The calculator settings screen failed to load. Reopen Gboard settings and try again.</translation>
         <translation locale="zh-Hant">計算機設定畫面載入失敗。請重新開啟 Gboard 設定再試一次。</translation>
     </string>
+    <string name="gboard_patches_telemetry_title">
+        <translation locale="en">Telemetry Blocking</translation>
+        <translation locale="zh-Hant">遙測封鎖</translation>
+    </string>
+    <string name="gboard_patches_telemetry_summary">
+        <translation locale="en">Choose which supported telemetry sources GboardWu blocks. All groups are blocked by default.</translation>
+        <translation locale="zh-Hant">選擇 GboardWu 要封鎖哪些已支援的遙測來源。所有群組預設都會封鎖。</translation>
+    </string>
+    <string name="gboard_patches_telemetry_restart_title">
+        <translation locale="en">Restart required</translation>
+        <translation locale="zh-Hant">需要重新啟動</translation>
+    </string>
+    <string name="gboard_patches_telemetry_restart_summary">
+        <translation locale="en">After changing these switches, use the restart button in the toolbar so startup and background telemetry components reload the new policy.</translation>
+        <translation locale="zh-Hant">變更這些開關後，請使用工具列的重新啟動按鈕，讓啟動期與背景遙測元件重新載入新的政策。</translation>
+    </string>
+    <string name="gboard_patches_telemetry_status_all_blocked_title">
+        <translation locale="en">All supported telemetry is blocked</translation>
+        <translation locale="zh-Hant">所有已支援的遙測都已封鎖</translation>
+    </string>
+    <string name="gboard_patches_telemetry_status_all_blocked_summary">
+        <translation locale="en">Every telemetry group covered by this patch is currently set to block.</translation>
+        <translation locale="zh-Hant">這個 patch 涵蓋的每個遙測群組目前都設為封鎖。</translation>
+    </string>
+    <string name="gboard_patches_telemetry_status_partially_allowed_title">
+        <translation locale="en">Some telemetry is allowed</translation>
+        <translation locale="zh-Hant">部分遙測已允許</translation>
+    </string>
+    <string name="gboard_patches_telemetry_status_partially_allowed_summary">
+        <translation locale="en">One or more telemetry groups are configured to use Gboard's stock reporting behavior.</translation>
+        <translation locale="zh-Hant">一個或多個遙測群組已設定為使用 Gboard 原本的回報行為。</translation>
+    </string>
+    <string name="gboard_patches_telemetry_error_title">
+        <translation locale="en">Telemetry settings unavailable</translation>
+        <translation locale="zh-Hant">遙測設定無法使用</translation>
+    </string>
+    <string name="gboard_patches_telemetry_error_summary">
+        <translation locale="en">The telemetry settings screen failed to load. Gboard remains usable and the runtime fails closed to blocking.</translation>
+        <translation locale="zh-Hant">遙測設定畫面載入失敗。Gboard 仍可使用，執行期會以封鎖為 fail-closed 預設。</translation>
+    </string>
+
+    <string name="gboard_patches_telemetry_clearcut_section">
+        <translation locale="en">Gboard &amp; ML Kit Clearcut</translation>
+        <translation locale="zh-Hant">Gboard 與 ML Kit Clearcut</translation>
+    </string>
+    <string name="gboard_patches_telemetry_clearcut_description">
+        <translation locale="en">Covers Gboard application metrics and ML Kit / OCR FIREBASE_ML_SDK events at the shared Clearcut submission path. OCR itself stays enabled.</translation>
+        <translation locale="zh-Hant">涵蓋 Gboard 應用程式指標，以及 ML Kit / OCR 的 FIREBASE_ML_SDK 事件，共用 Clearcut 送出路徑會被控制；OCR 功能本身仍保持啟用。</translation>
+    </string>
+    <string name="gboard_patches_telemetry_clearcut_toggle">
+        <translation locale="en">Block Clearcut telemetry</translation>
+        <translation locale="zh-Hant">封鎖 Clearcut 遙測</translation>
+    </string>
+    <string name="gboard_patches_telemetry_clearcut_summary">
+        <translation locale="en">Also keeps the Gboard Clearcut logger creation gate blocked as defence in depth.</translation>
+        <translation locale="zh-Hant">也會保留 Gboard Clearcut logger 建立閘門的封鎖，作為額外防護。</translation>
+    </string>
+
+    <string name="gboard_patches_telemetry_gms_section">
+        <translation locale="en">Google Play services telemetry</translation>
+        <translation locale="zh-Hant">Google Play 服務遙測</translation>
+    </string>
+    <string name="gboard_patches_telemetry_gms_description">
+        <translation locale="en">Covers ClientTelemetry plus throttling and notification telemetry. Functional Google API calls, real throttling, and GMS error UI remain unchanged.</translation>
+        <translation locale="zh-Hant">涵蓋 ClientTelemetry、節流遙測與通知遙測。功能性的 Google API 呼叫、實際節流行為與 GMS 錯誤介面都維持不變。</translation>
+    </string>
+    <string name="gboard_patches_telemetry_gms_toggle">
+        <translation locale="en">Block Google Play services telemetry</translation>
+        <translation locale="zh-Hant">封鎖 Google Play 服務遙測</translation>
+    </string>
+    <string name="gboard_patches_telemetry_gms_summary">
+        <translation locale="en">Blocks reporting sidecars without disabling the underlying Google API operations.</translation>
+        <translation locale="zh-Hant">只封鎖回報 sidecar，不會停用底層 Google API 操作。</translation>
+    </string>
+
+    <string name="gboard_patches_telemetry_daily_section">
+        <translation locale="en">Gboard Daily Ping</translation>
+        <translation locale="zh-Hant">Gboard Daily Ping</translation>
+    </string>
+    <string name="gboard_patches_telemetry_daily_description">
+        <translation locale="en">Controls Gboard's periodic Daily Ping metrics worker. When blocked, the worker still returns a successful result so WorkManager does not retry it.</translation>
+        <translation locale="zh-Hant">控制 Gboard 的週期性 Daily Ping 指標工作。封鎖時仍回傳成功結果，避免 WorkManager 因失敗而重試。</translation>
+    </string>
+    <string name="gboard_patches_telemetry_daily_toggle">
+        <translation locale="en">Block Daily Ping metrics</translation>
+        <translation locale="zh-Hant">封鎖 Daily Ping 指標</translation>
+    </string>
+    <string name="gboard_patches_telemetry_daily_summary">
+        <translation locale="en">Keeps the scheduler healthy while suppressing the reporting work.</translation>
+        <translation locale="zh-Hant">維持排程器正常運作，同時抑制回報工作。</translation>
+    </string>
+
+    <string name="gboard_patches_telemetry_primes_section">
+        <translation locale="en">Primes diagnostics</translation>
+        <translation locale="zh-Hant">Primes 診斷</translation>
+    </string>
+    <string name="gboard_patches_telemetry_primes_description">
+        <translation locale="en">Covers Primes performance/crash startup, the native-crash sidecar, and Lifeboat crash retransmission.</translation>
+        <translation locale="zh-Hant">涵蓋 Primes 效能與當機診斷啟動、native crash sidecar，以及 Lifeboat 當機重送。</translation>
+    </string>
+    <string name="gboard_patches_telemetry_primes_toggle">
+        <translation locale="en">Block Primes diagnostics</translation>
+        <translation locale="zh-Hant">封鎖 Primes 診斷</translation>
+    </string>
+    <string name="gboard_patches_telemetry_primes_summary">
+        <translation locale="en">Does not disable normal keyboard functionality.</translation>
+        <translation locale="zh-Hant">不會停用一般鍵盤功能。</translation>
+    </string>
+
+    <string name="gboard_patches_telemetry_tenor_section">
+        <translation locale="en">Tenor share tracking</translation>
+        <translation locale="zh-Hant">Tenor 分享追蹤</translation>
+    </string>
+    <string name="gboard_patches_telemetry_tenor_description">
+        <translation locale="en">Controls only Tenor /v2/registershare tracking after a GIF is selected. Search, media download, insertion, and sending remain available.</translation>
+        <translation locale="zh-Hant">只控制選取 GIF 後的 Tenor /v2/registershare 追蹤。搜尋、媒體下載、插入與送出 GIF 都維持可用。</translation>
+    </string>
+    <string name="gboard_patches_telemetry_tenor_toggle">
+        <translation locale="en">Block Tenor register-share tracking</translation>
+        <translation locale="zh-Hant">封鎖 Tenor register-share 追蹤</translation>
+    </string>
+    <string name="gboard_patches_telemetry_tenor_summary">
+        <translation locale="en">Validated with decrypted runtime traffic on the supported Gboard 18.0.3 target.</translation>
+        <translation locale="zh-Hant">已在支援的 Gboard 18.0.3 版本上用解密後的執行期流量驗證。</translation>
+    </string>
+
+    <string name="gboard_patches_telemetry_cronet_section">
+        <translation locale="en">Cronet network telemetry</translation>
+        <translation locale="zh-Hant">Cronet 網路遙測</translation>
+    </string>
+    <string name="gboard_patches_telemetry_cronet_description">
+        <translation locale="en">Controls Cronet's Android StatsLog / statsd operational telemetry. Cronet networking itself remains enabled.</translation>
+        <translation locale="zh-Hant">控制 Cronet 的 Android StatsLog / statsd 作業遙測。Cronet 網路功能本身仍保持啟用。</translation>
+    </string>
+    <string name="gboard_patches_telemetry_cronet_toggle">
+        <translation locale="en">Block Cronet StatsLog telemetry</translation>
+        <translation locale="zh-Hant">封鎖 Cronet StatsLog 遙測</translation>
+    </string>
+    <string name="gboard_patches_telemetry_cronet_summary">
+        <translation locale="en">Uses the same Cronet opt-in decision point as the stock android.net.http.EnableTelemetry manifest flag.</translation>
+        <translation locale="zh-Hant">使用與原廠 android.net.http.EnableTelemetry manifest 旗標相同的 Cronet opt-in 判斷點。</translation>
+    </string>
+
 </settings-text>
